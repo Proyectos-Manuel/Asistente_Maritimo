@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚓ Asistente Trámites Marítimos</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        :root { --mar: #005b96; --asistente: #e3f2fd; --usuario: #e8f5e9; --micro: #ff9800; }
+        body { background: linear-gradient(180deg, #e3f2fd 0%, #f5f0e1 100%); min-height: 100vh; }
+        header { background: var(--mar); color: white; padding: 1rem; text-align: center; }
+        main { max-width: 650px; margin: 0 auto; padding: 1rem; display: flex; flex-direction: column; height: calc(100vh - 80px); }
+        #cuadro-conversacion { flex: 1; overflow-y: auto; padding: 1rem; background: white; border-radius: 16px; margin-bottom: 1rem; }
+        .mensaje { margin-bottom: 1rem; padding: 0.9rem 1.1rem; border-radius: 18px; line-height: 1.5; max-width: 90%; }
+        .mensaje.asistente { background: var(--asistente); border-bottom-left-radius: 4px; margin-right: auto; }
+        .mensaje.usuario { background: var(--usuario); border-bottom-right-radius: 4px; margin-left: auto; }
+        .contenido-mensaje { display: flex; align-items: flex-start; gap: 0.5rem; }
+        .texto-mensaje { flex: 1; }
+        .boton-voz { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; padding: 0.2rem; width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; transition: background 0.2s; }
+        .boton-voz:hover { background: rgba(0,91,150,0.1); }
+        .boton-voz.leyendo { animation: pulso 1s infinite; background: rgba(255, 152, 0, 0.2); }
+        #zona-entrada { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.8rem; }
+        #texto-usuario { flex: 1; padding: 0.9rem 1rem; border: none; border-radius: 25px; font-size: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        button { border: none; border-radius: 50%; width: 48px; height: 48px; font-size: 1.2rem; cursor: pointer; transition: transform 0.15s; }
+        button:active { transform: scale(0.95); }
+        .micro { background: var(--micro); color: white; }
+        .micro.escuchando { animation: pulso 1s infinite; }
+        .enviar { background: #4caf50; color: white; }
+        #acciones { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+        #acciones button { border-radius: 20px; width: auto; height: auto; padding: 0.6rem 1rem; font-size: 0.85rem; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        @keyframes pulso {
+            0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
+            100% { box-shadow: 0 0 0 12px rgba(255, 152, 0, 0); }
+        }
+        .cargando { font-style: italic; color: #666; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>⚓ Asistente Marítimo</h1>
+    <p>Escribe o habla — te ayudo con tus trámites</p>
+</header>
+
+<main>
+    <div id="cuadro-conversacion">
+        <!-- Mensajes aparecen aquí -->
+    </div>
+
+    <div id="zona-entrada">
+        <input type="text" id="texto-usuario" placeholder="Escribe aquí...">
+        <button id="boton-micro" class="micro" title="Hablar">🎤</button>
+        <button id="boton-enviar" class="enviar">➤</button>
+    </div>
+
+    <div id="acciones">
+        <button data-mensaje="¿Qué trámites hay?">📋 Ver todos</button>
+        <button data-mensaje="Libreta Tipo A">📔 Libreta A</button>
+        <button data-mensaje="Libreta Tipo B">📔 Libreta B</button>
+        <button data-mensaje="Libreta Tipo C">📔 Libreta C</button>
+        <button data-mensaje="Libreta Tipo D">📔 Libreta D</button>
+        <button data-mensaje="Renovar mi libreta">🔄 Renovar</button>
+        <button data-mensaje="Perdí mi libreta, ¿qué hago?">📄 Pérdida/Duplicado</button>
+        <button data-mensaje="Despacho de embarcación">🚢 Despacho</button>
+        <button data-mensaje="Inscribir embarcación">⛵ Inscripción</button>
+        <button data-mensaje="Cambio de domicilio">🏠 Datos/Domicilio</button>
+    </div>
+</main>
+
+<script>
+const SERVIDOR = "http://localhost:5000";
+let servidorListo = false;
+let reconociendo = false;
+let reconocimiento = null;
+let mensajeSiendoLeido = null;
+
+// Verificar servidor
+async function verificarServidor() {
+    try {
+        const res = await fetch(`${SERVIDOR}/estado`);
+        servidorListo = (await res.json()).listo;
+    } catch {
+        servidorListo = false;
+    }
+}
+verificarServidor();
+
+// Reconocimiento de voz
+const ReconocimientoVoz = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (ReconocimientoVoz) {
+    reconocimiento = new ReconocimientoVoz();
+    reconocimiento.lang = "es-MX";
+    reconocimiento.continuous = false;
+    reconocimiento.onresult = e => {
+        document.getElementById("texto-usuario").value = e.results[0][0].transcript;
+        enviarMensaje();
+    };
+    reconocimiento.onend = () => {
+        reconociendo = false;
+        document.getElementById("boton-micro").classList.remove("escuchando");
+    };
+}
+
+// --- FUNCIÓN DE LEER EN VOZ ---
+function leerEnVoz(texto, boton) {
+    // Detener cualquier lectura anterior
+    speechSynthesis.cancel();
+    if (mensajeSiendoLeido) {
+        mensajeSiendoLeido.classList.remove("leyendo");
+    }
+
+    // Si ya se estaba leyendo este mismo → detenerse
+    if (boton && boton.dataset.leyendo === "si") {
+        boton.dataset.leyendo = "no";
+        return;
+    }
+
+    // Marcar como leyendo
+    if (boton) {
+        boton.dataset.leyendo = "si";
+        boton.classList.add("leyendo");
+        mensajeSiendoLeido = boton;
+    }
+
+    // Iniciar lectura
+    const voz = new SpeechSynthesisUtterance();
+    voz.text = texto.replace(/[*•📔📄🚢⛵🏠🔄💲⚠️]/g, " ");
+    voz.lang = "es-MX";
+    voz.rate = 0.95;
+    voz.pitch = 1.1;
+    
+    voz.onend = () => {
+        if (boton) {
+            boton.dataset.leyendo = "no";
+            boton.classList.remove("leyendo");
+        }
+        mensajeSiendoLeido = null;
+    };
+    
+    speechSynthesis.speak(voz);
+}
+
+// --- AGREGAR MENSAJE A LA PÁGINA ---
+let contador = 0;
+function agregarMensaje(texto, quien, cargando = false) {
+    contador++;
+    const caja = document.getElementById("cuadro-conversacion");
+    const div = document.createElement("div");
+    div.className = `mensaje ${quien} ${cargando ? "cargando" : ""}`;
+    
+    if (quien === "asistente" && !cargando) {
+        // Con botón de bocina
+        div.innerHTML = `
+            <div class="contenido-mensaje">
+                <span class="texto-mensaje">${texto.replace(/\n/g, "<br>")}</span>
+                <button class="boton-voz" title="Escuchar 🔊">🔊</button>
+            </div>
+        `;
+        // Conectar el botón de voz
+        const botonVoz = div.querySelector(".boton-voz");
+        botonVoz.addEventListener("click", () => leerEnVoz(texto, botonVoz));
+    } else {
+        // Sin botón de bocina
+        div.innerHTML = `<div class="texto-mensaje">${texto.replace(/\n/g, "<br>")}</div>`;
+    }
+    
+    caja.appendChild(div);
+    caja.scrollTop = caja.scrollHeight;
+    return div;
+}
+
+function quitarMensaje(elemento) {
+    elemento?.remove();
+}
+
+// --- ENVIAR MENSAJE ---
+async function enviarMensaje() {
+    const campo = document.getElementById("texto-usuario");
+    const texto = campo.value.trim();
+    if (!texto) return;
+
+    agregarMensaje(texto, "usuario");
+    campo.value = "";
+
+    const carga = agregarMensaje("Pensando... 🧠", "asistente", true);
+
+    let respuesta;
+    if (servidorListo) {
+        try {
+            const res = await fetch(`${SERVIDOR}/preguntar`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mensaje: texto })
+            });
+            if (!res.ok) throw new Error("Error");
+            respuesta = (await res.json()).respuesta;
+        } catch {
+            respuesta = "❌ No llego al servidor. ¿Está encendida la Terminal de servidor?";
+        }
+    } else {
+        respuesta = "🧠 Conectando... espera un momento y vuelve a intentar.";
+    }
+
+    quitarMensaje(carga);
+    agregarMensaje(respuesta, "asistente");
+    // ✅ YA NO LEE SOLO — solo al tocar la bocina
+}
+
+// --- CONECTAR TODO ---
+document.addEventListener("DOMContentLoaded", () => {
+    // Mensaje de bienvenida con bocina
+    agregarMensaje(
+        "¡Hola! 🤝 Soy tu asistente para trámites de SEMAR-UNAMAN. Escribe algo o presiona el micrófono 🎤. Toca la bocina 🔊 para escuchar la respuesta.",
+        "asistente"
+    );
+
+    // Botón enviar
+    document.getElementById("boton-enviar").addEventListener("click", enviarMensaje);
+    
+    // Enter en el campo
+    document.getElementById("texto-usuario").addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            enviarMensaje();
+        }
+    });
+
+    // Micrófono
+    document.getElementById("boton-micro").addEventListener("click", () => {
+        if (!reconocimiento) {
+            alert("Usa Chrome para el micrófono.");
+            return;
+        }
+        if (!reconociendo) {
+            reconocimiento.start();
+            reconociendo = true;
+            document.getElementById("boton-micro").classList.add("escuchando");
+        }
+    });
+
+    // Botones rápidos
+    document.querySelectorAll("[data-mensaje]").forEach(btn => {
+        btn.addEventListener("click", function() {
+            document.getElementById("texto-usuario").value = this.getAttribute("data-mensaje");
+            enviarMensaje();
+        });
+    });
+});
+</script>
+
+</body>
+</html>
