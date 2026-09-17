@@ -3,73 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚓ Asistente Trámites Marítimos</title>
+    <title>Asistente de Trámites Marítimos — SEMAR · UNAMAN</title>
+    <meta name="description" content="Asistente virtual con voz y chat para conocer los requisitos de los trámites de SEMAR-UNAMAN: libretas de mar, despacho e inscripción de embarcaciones.">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
-        :root { --mar: #005b96; --asistente: #e3f2fd; --usuario: #e8f5e9; --micro: #ff9800; }
-        body { background: linear-gradient(180deg, #e3f2fd 0%, #f5f0e1 100%); min-height: 100vh; }
-        header { background: var(--mar); color: white; padding: 1rem; text-align: center; }
-        main { max-width: 650px; margin: 0 auto; padding: 1rem; display: flex; flex-direction: column; height: calc(100vh - 80px); }
-        #cuadro-conversacion { flex: 1; overflow-y: auto; padding: 1rem; background: white; border-radius: 16px; margin-bottom: 1rem; }
-        .mensaje { margin-bottom: 1rem; padding: 0.9rem 1.1rem; border-radius: 18px; line-height: 1.6; max-width: 92%; }
-        .mensaje.asistente { background: var(--asistente); border-bottom-left-radius: 4px; margin-right: auto; }
-        .mensaje.usuario { background: var(--usuario); border-bottom-right-radius: 4px; margin-left: auto; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+        :root {
+            --mar: #003a5d;
+            --mar-claro: #005b96;
+            --arena: #f6f1e7;
+            --arena-oscura: #e9e0cc;
+            --asistente: #eaf3fa;
+            --asistente-borde: #c5ddf0;
+            --usuario: #0069a7;
+            --acento: #d97706;
+            --exito: #2e7d32;
+            --texto: #1c2b36;
+            --texto-suave: #5b6b77;
+            --blanco: #ffffff;
+        }
+        body { background: var(--arena); color: var(--texto); min-height: 100vh; display: flex; flex-direction: column; }
+
+        header {
+            background: linear-gradient(135deg, var(--mar) 0%, var(--mar-claro) 100%);
+            color: var(--blanco);
+            padding: 1.25rem 1rem 1.1rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 58, 93, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+        header::after {
+            content: "";
+            position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60' viewBox='0 0 120 60'%3E%3Cpath d='M0 30 Q 30 10 60 30 T 120 30' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='2'/%3E%3Cpath d='M0 45 Q 30 25 60 45 T 120 45' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='2'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+        header h1 { font-size: 1.35rem; font-weight: 700; line-height: 1.25; position: relative; }
+        header p { font-size: 0.9rem; opacity: 0.92; margin-top: 0.3rem; position: relative; }
+        .ancla { display: inline-block; font-size: 1.6rem; margin-bottom: 0.2rem; animation: balanceo 3.5s ease-in-out infinite; }
+        @keyframes balanceo {
+            0%, 100% { transform: rotate(-8deg); }
+            50% { transform: rotate(8deg); }
+        }
+
+        .barra-oficial {
+            background: var(--arena-oscura);
+            text-align: center;
+            padding: 0.5rem 1rem;
+            font-size: 0.82rem;
+            color: var(--texto-suave);
+            border-bottom: 1px solid rgba(0, 58, 93, 0.1);
+        }
+        .barra-oficial a { color: var(--mar-claro); font-weight: 600; text-decoration: none; }
+        .barra-oficial a:hover { text-decoration: underline; }
+
+        main {
+            flex: 1;
+            max-width: 680px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 230px);
+            min-height: 420px;
+        }
+        #cuadro-conversacion {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.1rem;
+            background: var(--blanco);
+            border-radius: 18px;
+            box-shadow: 0 3px 14px rgba(0, 58, 93, 0.08);
+        }
+        .mensaje { margin-bottom: 0.9rem; padding: 0.85rem 1.05rem; border-radius: 18px; line-height: 1.55; max-width: 92%; font-size: 0.95rem; }
+        .mensaje.asistente { background: var(--asistente); border: 1px solid var(--asistente-borde); border-bottom-left-radius: 5px; margin-right: auto; animation: aparece 0.25s ease-out; }
+        .mensaje.usuario { background: var(--usuario); color: var(--blanco); border-bottom-right-radius: 5px; margin-left: auto; animation: aparece 0.25s ease-out; }
+        @keyframes aparece { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .contenido-mensaje { display: flex; align-items: flex-start; gap: 0.5rem; }
-        .texto-mensaje { flex: 1; }
-        .boton-voz { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; padding: 0.3rem; width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; transition: all 0.2s; }
-        .boton-voz:hover { background: rgba(0,91,150,0.1); }
-        .boton-voz.leyendo { animation: pulso 1s infinite; background: rgba(255, 152, 0, 0.2); }
-        #zona-entrada { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.8rem; }
-        #texto-usuario { flex: 1; padding: 0.9rem 1rem; border: none; border-radius: 25px; font-size: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-        button { border: none; border-radius: 50%; width: 48px; height: 48px; font-size: 1.2rem; cursor: pointer; transition: transform 0.15s; }
+        .texto-mensaje { flex: 1; min-width: 0; }
+        .texto-mensaje strong { color: var(--mar); }
+
+        .boton-voz {
+            background: transparent; border: none; font-size: 1.05rem; cursor: pointer;
+            padding: 0.25rem; width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; transition: all 0.2s;
+        }
+        .boton-voz:hover { background: rgba(0, 91, 150, 0.12); }
+        .boton-voz.leyendo { animation: pulso-naranja 1s infinite; background: rgba(217, 119, 6, 0.18); }
+
+        #indicador {
+            display: none; align-items: center; gap: 0.35rem; padding: 0.85rem 1.05rem;
+            background: var(--asistente); border: 1px solid var(--asistente-borde);
+            border-radius: 18px; border-bottom-left-radius: 5px; width: fit-content; margin-bottom: 0.9rem;
+        }
+        #indicador.visible { display: flex; }
+        .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--mar-claro); animation: rebote 1.2s infinite; }
+        #indicador .punto:nth-child(2) { animation-delay: 0.15s; }
+        #indicador .punto:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes rebote {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+            40% { transform: translateY(-5px); opacity: 1; }
+        }
+
+        #zona-entrada { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.8rem; }
+        #texto-usuario {
+            flex: 1; padding: 0.85rem 1.1rem; border: 1.5px solid var(--arena-oscura);
+            border-radius: 25px; font-size: 1rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+            background: var(--blanco); color: var(--texto); font-family: inherit;
+        }
+        #texto-usuario:focus { border-color: var(--mar-claro); box-shadow: 0 0 0 3px rgba(0, 91, 150, 0.15); }
+        #texto-usuario::placeholder { color: #9aa8b2; }
+        button { border: none; cursor: pointer; font-family: inherit; }
         button:active { transform: scale(0.95); }
-        .micro { background: var(--micro); color: white; }
-        .micro.escuchando { animation: pulso 1s infinite; }
-        .enviar { background: #4caf50; color: white; }
-        #acciones { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
-        #acciones button { border-radius: 20px; width: auto; height: auto; padding: 0.7rem 1.1rem; font-size: 0.9rem; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        @keyframes pulso {
-            0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
-            100% { box-shadow: 0 0 0 12px rgba(255, 152, 0, 0); }
+        .micro, .enviar { border-radius: 50%; width: 48px; height: 48px; font-size: 1.2rem; flex-shrink: 0; transition: transform 0.15s, background 0.2s; }
+        .micro { background: var(--acento); color: white; }
+        .micro.escuchando { animation: pulso-naranja 1s infinite; }
+        .enviar { background: var(--exito); color: white; }
+        @keyframes pulso-naranja {
+            0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4); }
+            100% { box-shadow: 0 0 0 12px rgba(217, 119, 6, 0); }
+        }
+
+        #acciones { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.8rem; }
+        .chip {
+            border-radius: 20px; padding: 0.55rem 1rem; font-size: 0.87rem;
+            background: var(--blanco); color: var(--mar); font-weight: 500;
+            border: 1.5px solid var(--arena-oscura); transition: all 0.18s;
+        }
+        .chip:hover { background: var(--mar-claro); color: white; border-color: var(--mar-claro); transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0, 91, 150, 0.25); }
+
+        .fila-voz { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; }
+        .interruptor { position: relative; width: 44px; height: 24px; border-radius: 12px; background: #cfd8de; transition: background 0.2s; flex-shrink: 0; }
+        .interruptor[aria-checked="true"] { background: var(--exito); }
+        .interruptor::after {
+            content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+            border-radius: 50%; background: white; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .interruptor[aria-checked="true"]::after { left: 23px; }
+        .etiqueta-voz { font-size: 0.85rem; color: var(--texto-suave); }
+        #aviso-micro { display: none; font-size: 0.85rem; color: #b45309; font-weight: 600; margin-top: 0.5rem; }
+        #aviso-micro.visible { display: block; }
+
+        footer { text-align: center; padding: 0.8rem 1rem 1rem; font-size: 0.8rem; color: var(--texto-suave); }
+        footer a { color: var(--mar-claro); font-weight: 600; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 480px) {
+            main { height: calc(100vh - 280px); min-height: 360px; }
+            header h1 { font-size: 1.15rem; }
+            .mensaje { max-width: 96%; }
         }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>⚓ Asistente Marítimo SEMAR-UNAMAN</h1>
-    <p>Escribe, habla o toca un botón — te ayudo al instante</p>
+    <div class="ancla">⚓</div>
+    <h1>Asistente de Trámites Marítimos</h1>
+    <p>SEMAR · UNAMAN — Escribe, habla o toca un botón</p>
 </header>
+
+<div class="barra-oficial">
+    Información basada en la página oficial: <a href="https://www.gob.mx/semar/unaman/acciones-y-programas/tramites-de-unaman-418150" target="_blank" rel="noopener noreferrer">gob.mx/semar/unaman</a>
+</div>
 
 <main>
     <div id="cuadro-conversacion"></div>
 
+    <div id="indicador" aria-hidden="true"><span class="punto"></span><span class="punto"></span><span class="punto"></span></div>
+
     <div id="zona-entrada">
-        <input type="text" id="texto-usuario" placeholder="Escribe aquí...">
-        <button id="boton-micro" class="micro" title="Hablar">🎤</button>
-        <button id="boton-enviar" class="enviar">➤</button>
+        <input type="text" id="texto-usuario" placeholder="Escribe tu pregunta..." autocomplete="off">
+        <button id="boton-micro" class="micro" title="Hablar con el asistente">🎤</button>
+        <button id="boton-enviar" class="enviar" title="Enviar">➤</button>
     </div>
 
     <div id="acciones">
-        <button data-palabra="todos">📋 Ver todos</button>
-        <button data-palabra="libreta a">📔 Libreta A</button>
-        <button data-palabra="libreta b">📔 Libreta B</button>
-        <button data-palabra="libreta c">📔 Libreta C</button>
-        <button data-palabra="libreta d">📔 Libreta D</button>
-        <button data-palabra="renovar">🔄 Renovar</button>
-        <button data-palabra="pérdida">📄 Pérdida/Duplicado</button>
-        <button data-palabra="despacho">🚢 Despacho</button>
-        <button data-palabra="inscribir">⛵ Inscripción</button>
-        <button data-palabra="cambio">🏠 Datos/Domicilio</button>
+        <button class="chip" data-palabra="todos">📋 Todos</button>
+        <button class="chip" data-palabra="libreta a">📔 Libreta A</button>
+        <button class="chip" data-palabra="libreta b">📔 Libreta B</button>
+        <button class="chip" data-palabra="libreta c">📔 Libreta C</button>
+        <button class="chip" data-palabra="libreta d">📔 Libreta D</button>
+        <button class="chip" data-palabra="renovar">🔄 Renovar</button>
+        <button class="chip" data-palabra="pérdida">📄 Pérdida/Duplicado</button>
+        <button class="chip" data-palabra="despacho">🚢 Despacho</button>
+        <button class="chip" data-palabra="inscribir">⛵ Inscripción</button>
+        <button class="chip" data-palabra="cambio">🏠 Datos/Domicilio</button>
+        <button class="chip" data-palabra="costos">💰 Costos</button>
+        <button class="chip" data-palabra="horario">🕐 Horarios</button>
     </div>
+
+    <div class="fila-voz">
+        <button class="interruptor" id="interruptor-voz" role="switch" aria-checked="false" title="Voz automática"></button>
+        <span class="etiqueta-voz">Voz automática: el asistente lee sus respuestas en voz alta</span>
+    </div>
+    <div id="aviso-micro">Tu navegador no soporta el micrófono — usa Chrome o Edge para hablar.</div>
 </main>
+
+<footer>
+    <p>Horario de atención en Capitanías: Lunes a Viernes, 9:00–13:00 h</p>
+    <p>Este sitio es de apoyo; la información oficial la emite SEMAR en <a href="https://www.gob.mx/semar/unaman/acciones-y-programas/tramites-de-unaman-418150" target="_blank" rel="noopener noreferrer">gob.mx/semar</a></p>
+</footer>
 
 <script>
 // ==========================================
-// BASE DE RESPUESTAS — TODO AQUÍ DENTRO ✅
+// BASE DE RESPUESTAS — cada entrada tiene
+// palabras clave (sinónimos) y su respuesta
 // ==========================================
-const RESPUESTAS = {
-    "libreta a": `📔 LIBRETA TIPO A — Marina Mercante / Internacional
+const RESPUESTAS = [
+    {
+        claves: ["libreta a", "libreta tipo a", "marina mercante", "internacional"],
+        respuesta: `📔 LIBRETA TIPO A — Marina Mercante / Internacional
 
 Requisitos:
 • Acta de nacimiento
@@ -84,9 +228,11 @@ Requisitos:
 
 📍 Lugar: Capitanía de Puerto
 🕐 Horario: Lunes a Viernes de 9:00 a 13:00 horas
-✅ Vigencia: 5 años`,
-
-    "libreta b": `📔 LIBRETA TIPO B — Pesca
+✅ Vigencia: 5 años`
+    },
+    {
+        claves: ["libreta b", "libreta tipo b", "pesca", "pescador"],
+        respuesta: `📔 LIBRETA TIPO B — Pesca
 
 Requisitos:
 • Acta de nacimiento
@@ -98,9 +244,11 @@ Requisitos:
 • 2 fotos credencial, fondo blanco
 • Comprobante de pago
 
-✅ Vigencia: 5 años`,
-
-    "libreta c": `📔 LIBRETA TIPO C — Recreo / Turismo
+✅ Vigencia: 5 años`
+    },
+    {
+        claves: ["libreta c", "libreta tipo c", "recreo", "turismo", "deporte"],
+        respuesta: `📔 LIBRETA TIPO C — Recreo / Turismo
 
 Requisitos:
 • Acta de nacimiento
@@ -112,9 +260,11 @@ Requisitos:
 • 2 fotos credencial, fondo blanco
 • Comprobante de pago
 
-✅ Vigencia: 5 años`,
-
-    "libreta d": `📔 LIBRETA TIPO D — Plataformas / Costa Afuera
+✅ Vigencia: 5 años`
+    },
+    {
+        claves: ["libreta d", "libreta tipo d", "plataforma", "costa afuera", "offshore"],
+        respuesta: `📔 LIBRETA TIPO D — Plataformas / Costa Afuera
 
 Requisitos:
 • Acta de nacimiento
@@ -127,9 +277,11 @@ Requisitos:
 • 2 fotos credencial, fondo blanco
 • Comprobante de pago
 
-✅ Vigencia: 5 años`,
-
-    "renovar": `🔄 RENOVACIÓN DE LIBRETA
+✅ Vigencia: 5 años`
+    },
+    {
+        claves: ["renovar", "renovación", "renovacion", "vencida", "venció", "vencio", "revalidar"],
+        respuesta: `🔄 RENOVACIÓN DE LIBRETA
 
 Requisitos:
 • Libreta anterior original
@@ -140,10 +292,12 @@ Requisitos:
 • 2 fotos credencial, fondo blanco
 • Comprobante de pago
 
-⚠️ Entrega al menos 30 días antes de la fecha de vencimiento.
-Si ya venció, se tramita como documento nuevo.`,
-
-    "pérdida": `📄 DUPLICADO / PÉRDIDA O ROBO
+⚠️ Entrega tu trámite al menos 30 días antes de que venza.
+Si ya venció, se tramita como documento nuevo.`
+    },
+    {
+        claves: ["pérdida", "perdida", "perdí", "perdi", "robo", "me robaron", "extravío", "extravio", "duplicado", "me olvidé"],
+        respuesta: `📄 DUPLICADO / PÉRDIDA O ROBO
 
 Requisitos:
 • Acta de nacimiento
@@ -154,9 +308,11 @@ Requisitos:
 • 2 fotos credencial, fondo blanco
 • Comprobante de pago
 
-⏱️ Tiempo de entrega: 5 a 10 días hábiles.`,
-
-    "despacho": `🚢 DESPACHO DE EMBARCACIÓN
+⏱️ Tiempo de entrega: 5 a 10 días hábiles.`
+    },
+    {
+        claves: ["despacho", "zarpar", "salida", "navegar", "embarcación despacho"],
+        respuesta: `🚢 DESPACHO DE EMBARCACIÓN
 
 Documentos necesarios:
 • Matrícula y documentos vigentes de la embarcación
@@ -165,9 +321,11 @@ Documentos necesarios:
 • Lista de tripulantes firmada
 • Comprobante de pago de derechos
 
-⚠️ Se tramita ANTES de zarpar en la Capitanía de Puerto.`,
-
-    "inscribir": `⛵ INSCRIPCIÓN DE EMBARCACIÓN
+⚠️ Se tramita ANTES de zarpar en la Capitanía de Puerto.`
+    },
+    {
+        claves: ["inscribir", "inscripción", "inscripcion", "matricular", "matrícula", "compré una embarcación", "bote nuevo"],
+        respuesta: `⛵ INSCRIPCIÓN DE EMBARCACIÓN
 
 Requisitos:
 • Solicitud firmada
@@ -177,9 +335,11 @@ Requisitos:
 • Póliza de seguro vigente
 • Comprobante de pago
 
-📍 Lugar: Capitanía de Puerto correspondiente.`,
-
-    "cambio": `🏠 CAMBIO DE DOMICILIO O DATOS
+📍 Lugar: Capitanía de Puerto correspondiente.`
+    },
+    {
+        claves: ["cambio", "domicilio", "datos", "me mudé", "actualizar"],
+        respuesta: `🏠 CAMBIO DE DOMICILIO O DATOS
 
 Requisitos:
 • Libreta marítima original
@@ -187,9 +347,66 @@ Requisitos:
 • Nuevo comprobante de domicilio (menos de 3 meses)
 • Comprobante de pago si aplica
 
-📍 Se actualiza en Capitanía de Puerto.`,
+📍 Se actualiza en la Capitanía de Puerto.`
+    },
+    {
+        claves: ["costo", "costos", "cuánto", "cuanto", "pago", "precio", "tarifa", "derechos"],
+        respuesta: `💰 COSTOS DE LOS TRÁMITES
 
-    "todos": `📋 TRÁMITES DISPONIBLES EN SEMAR-UNAMAN
+Los montos de derechos varían según el trámite y se actualizan cada año.
+
+📍 Consulta la tabla oficial de costos en:
+https://www.gob.mx/semar/unaman
+
+🤝 Apoyo para llenar documentos: $20 MXN
+
+💡 Tip: lleva efectivo o verifica los métodos de pago aceptados en tu Capitanía de Puerto.`
+    },
+    {
+        claves: ["horario", "horarios", "atención", "atencion", "abren", "cierran", "sábado", "sabado", "domingo", "días hábiles", "dias habiles"],
+        respuesta: `🕐 HORARIOS DE ATENCIÓN
+
+📍 Capitanías de Puerto:
+Lunes a Viernes de 9:00 a 13:00 horas
+
+❌ Sábados, domingos y días festivos: cerrado
+
+💡 Llega temprano: la atención es por orden de llegada.`
+    },
+    {
+        claves: ["dónde", "donde", "lugar", "dirección", "direccion", "capitanía", "capitania", "oficina"],
+        respuesta: `📍 ¿DÓNDE SE TRAMITA?
+
+Los trámites se realizan en la Capitanía de Puerto que corresponde a tu localidad.
+
+🔍 Encuentra tu Capitanía más cercana en:
+https://www.gob.mx/semar/unaman
+
+🕐 Horario: Lunes a Viernes de 9:00 a 13:00 horas`
+    },
+    {
+        claves: ["examen médico", "examen medico", "médico", "medico", "salud", "certificado médico"],
+        respuesta: `🩺 EXAMEN MÉDICO
+
+Para las libretas necesitas un examen médico autorizado por SEMAR.
+
+📍 Se realiza en el servicio médico de la Capitanía de Puerto.
+🕐 Acude en horario de atención: Lunes a Viernes de 9:00 a 13:00 h
+📋 Lleva tu identificación oficial y pregunta por los estudios que requiere tu tipo de libreta.`
+    },
+    {
+        claves: ["fotos", "foto"],
+        respuesta: `📸 FOTOGRAFÍAS
+
+• Necesitas 2 fotos tamaño credencial
+• Fondo blanco
+• Recientes y de frente
+
+💡 Muchas Capitanías tienen estudio de fotos cerca; verifica antes de ir.`
+    },
+    {
+        claves: ["todos", "lista", "opciones", "trámites", "tramites", "qué puedo", "que puedo", "ayuda", "menú", "menu"],
+        respuesta: `📋 TRÁMITES DISPONIBLES EN SEMAR-UNAMAN
 
 📔 Libreta A — Marina Mercante / Internacional
 📔 Libreta B — Pesca
@@ -201,25 +418,46 @@ Requisitos:
 ⛵ Inscripción de embarcación
 🏠 Cambio de domicilio o datos
 
-Toca el trámite que necesitas para ver los detalles.`,
+Toca un botón abajo o pregunta con tus palabras, por ejemplo:
+💬 "Perdí mi libreta" · "¿Cuánto cuesta?" · "¿Dónde me presento?"`
+    },
+    {
+        claves: ["gracias", "thank", "adiós", "adios", "bye"],
+        respuesta: `🤝 ¡Con gusto! Si necesitas algo más, aquí estoy.
 
-    "general": `📌 INFORMACIÓN GENERAL
+💡 Recuerda: la información oficial la emite SEMAR en gob.mx/semar. ¡Buen viaje! ⚓`
+    },
+    {
+        claves: ["hola", "buenas", "buenos días", "buenas tardes", "buenas noches"],
+        respuesta: `¡Hola! 🤝 Soy tu asistente de trámites de SEMAR-UNAMAN.
+
+Puedo ayudarte con:
+📔 Libretas de mar (A, B, C y D)
+🔄 Renovaciones y duplicados
+🚢 Despacho e inscripción de embarcaciones
+💰 Costos, horarios y lugares
+
+¿Qué necesitas? Toca un botón o pregunta con tus propias palabras.`
+    }
+];
+
+const RESPUESTA_GENERAL = `📌 INFORMACIÓN GENERAL
 
 📍 Lugar: Capitanía de Puerto correspondiente
 🕐 Horario: Lunes a Viernes de 9:00 a 13:00 horas
 📄 Lleva copias de todos tus documentos
 💰 Costos oficiales en: gob.mx/semar
-🤝 Apoyo para llenar documentos: $20 MXN
-🔒 Tus datos personales se protegen y no se comparten con nadie`
-};
+🔒 Tus datos personales se protegen y no se comparten con nadie
+
+Escribe "todos" para ver la lista de trámites.`;
 
 // ==========================================
 // FUNCIONAMIENTO
 // ==========================================
 let reconociendo = false;
 let reconocimiento = null;
+let vozAutomatica = false;
 
-// Reconocimiento de voz
 const ReconocimientoVoz = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (ReconocimientoVoz) {
     reconocimiento = new ReconocimientoVoz();
@@ -233,24 +471,36 @@ if (ReconocimientoVoz) {
         reconociendo = false;
         document.getElementById("boton-micro").classList.remove("escuchando");
     };
+    reconocimiento.onerror = () => {
+        reconociendo = false;
+        document.getElementById("boton-micro").classList.remove("escuchando");
+    };
+} else {
+    document.getElementById("aviso-micro").classList.add("visible");
 }
 
-// Leer en voz
+function limpiarParaVoz(texto) {
+    return texto.replace(/[•📔🔄📄🚢⛵🏠💰🕐📍⚠️✅🩺📸🤝💡❌🔍💬⚓🤖]/g, "").replace(/\s+/g, " ").trim();
+}
+
 function leerEnVoz(texto, boton) {
-    speechSynthesis.cancel();
+    if (!("speechSynthesis" in window)) return;
     if (boton && boton.dataset.leyendo === "si") {
+        speechSynthesis.cancel();
         boton.dataset.leyendo = "no";
+        boton.classList.remove("leyendo");
         return;
     }
+    speechSynthesis.cancel();
     if (boton) {
         boton.dataset.leyendo = "si";
         boton.classList.add("leyendo");
     }
     const voz = new SpeechSynthesisUtterance();
-    voz.text = texto.replace(/[•📔🔄📄🚢⛵🏠📍🕐⚠️✅]/g, " ");
+    voz.text = limpiarParaVoz(texto);
     voz.lang = "es-MX";
     voz.rate = 0.95;
-    voz.pitch = 1.1;
+    voz.pitch = 1.05;
     voz.onend = () => {
         if (boton) {
             boton.dataset.leyendo = "no";
@@ -260,79 +510,107 @@ function leerEnVoz(texto, boton) {
     speechSynthesis.speak(voz);
 }
 
-// Detectar respuesta
 function buscarRespuesta(mensaje) {
-    const m = mensaje.toLowerCase();
-    for (const [palabra, respuesta] of Object.entries(RESPUESTAS)) {
-        if (m.includes(palabra)) return respuesta;
+    const m = mensaje.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    let mejor = null;
+    let mejorPuntaje = 0;
+    for (const entrada of RESPUESTAS) {
+        for (const clave of entrada.claves) {
+            const c = clave.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (m.includes(c) && c.length > mejorPuntaje) {
+                mejor = entrada.respuesta;
+                mejorPuntaje = c.length;
+            }
+        }
     }
-    return RESPUESTAS.todos;
+    return mejor || RESPUESTA_GENERAL;
 }
 
-// Agregar mensaje a pantalla
+// Escapar el texto del usuario para evitar inyección de contenido
+function escapar(texto) {
+    const div = document.createElement("div");
+    div.textContent = texto;
+    return div.innerHTML;
+}
+
 function agregarMensaje(texto, quien) {
     const caja = document.getElementById("cuadro-conversacion");
     const div = document.createElement("div");
-    div.className = `mensaje ${quien}`;
-    
+    div.className = "mensaje " + quien;
+
     if (quien === "asistente") {
         div.innerHTML = `
             <div class="contenido-mensaje">
                 <span class="texto-mensaje">${texto.replace(/\n/g, "<br>")}</span>
-                <button class="boton-voz" title="Escuchar 🔊">🔊</button>
+                <button class="boton-voz" title="Escuchar en voz alta">🔊</button>
             </div>
         `;
         div.querySelector(".boton-voz").addEventListener("click", () => leerEnVoz(texto, div.querySelector(".boton-voz")));
     } else {
-        div.innerHTML = `<div class="texto-mensaje">${texto.replace(/\n/g, "<br>")}</div>`;
+        div.innerHTML = `<div class="texto-mensaje">${escapar(texto)}</div>`;
     }
-    
+
     caja.appendChild(div);
     caja.scrollTop = caja.scrollHeight;
 }
 
-// Enviar mensaje
 function enviarMensaje() {
     const campo = document.getElementById("texto-usuario");
     const texto = campo.value.trim();
     if (!texto) return;
-    
+
     agregarMensaje(texto, "usuario");
     campo.value = "";
-    
+
+    const indicador = document.getElementById("indicador");
+    indicador.classList.add("visible");
+    document.getElementById("cuadro-conversacion").scrollTop = document.getElementById("cuadro-conversacion").scrollHeight;
+
     const respuesta = buscarRespuesta(texto);
-    setTimeout(() => agregarMensaje(respuesta, "asistente"), 100);
+    setTimeout(() => {
+        indicador.classList.remove("visible");
+        agregarMensaje(respuesta, "asistente");
+        if (vozAutomatica) leerEnVoz(respuesta, null);
+    }, 500);
 }
 
-// Conectar todo
 document.addEventListener("DOMContentLoaded", () => {
-    // Bienvenida
-    agregarMensaje("¡Hola! 🤝 Soy tu asistente para trámites de SEMAR-UNAMAN. Toca un botón o escribe lo que necesitas.", "asistente");
-    
-    // Botón enviar
+    agregarMensaje(`¡Hola! 🤝 Soy tu asistente para trámites de SEMAR-UNAMAN.
+
+Puedo ayudarte a conocer los requisitos de tu trámite:
+📔 Libretas de mar · 🔄 Renovación · 🚢 Despacho · ⛵ Inscripción
+
+Toca un botón abajo, escribe tu pregunta, o mantén presionado el micrófono y habla.`, "asistente");
+
     document.getElementById("boton-enviar").addEventListener("click", enviarMensaje);
-    
-    // Enter
+
     document.getElementById("texto-usuario").addEventListener("keydown", e => {
         if (e.key === "Enter") { e.preventDefault(); enviarMensaje(); }
     });
-    
-    // Micrófono
+
     document.getElementById("boton-micro").addEventListener("click", () => {
-        if (!reconocimiento) { alert("Usa Chrome para el micrófono."); return; }
+        if (!reconocimiento) return;
         if (!reconociendo) {
             reconocimiento.start();
             reconociendo = true;
             document.getElementById("boton-micro").classList.add("escuchando");
+        } else {
+            reconocimiento.stop();
         }
     });
-    
-    // Botones rápidos
+
     document.querySelectorAll("[data-palabra]").forEach(btn => {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", function () {
             document.getElementById("texto-usuario").value = this.getAttribute("data-palabra");
             enviarMensaje();
         });
+    });
+
+    const interruptor = document.getElementById("interruptor-voz");
+    interruptor.addEventListener("click", () => {
+        vozAutomatica = !vozAutomatica;
+        interruptor.setAttribute("aria-checked", vozAutomatica ? "true" : "false");
+        if (!vozAutomatica && "speechSynthesis" in window) speechSynthesis.cancel();
     });
 });
 </script>
