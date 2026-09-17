@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asistente de Trámites Marítimos — SEMAR · UNAMAN</title>
-    <meta name="description" content="Asistente virtual con voz y chat para conocer los requisitos de los trámites de SEMAR-UNAMAN: libretas de mar, despacho e inscripción de embarcaciones.">
+    <meta name="description" content="Asistente virtual con voz y chat que te acompaña paso a paso en los trámites de SEMAR-UNAMAN: libretas de mar, despacho, inscripción y más.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
         :root {
@@ -26,7 +26,7 @@
         header {
             background: linear-gradient(135deg, var(--mar) 0%, var(--mar-claro) 100%);
             color: var(--blanco);
-            padding: 1.25rem 1rem 1.1rem;
+            padding: 1.1rem 1rem 1rem;
             text-align: center;
             box-shadow: 0 2px 10px rgba(0, 58, 93, 0.25);
             position: relative;
@@ -38,35 +38,48 @@
             background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60' viewBox='0 0 120 60'%3E%3Cpath d='M0 30 Q 30 10 60 30 T 120 30' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='2'/%3E%3Cpath d='M0 45 Q 30 25 60 45 T 120 45' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='2'/%3E%3C/svg%3E");
             pointer-events: none;
         }
-        header h1 { font-size: 1.35rem; font-weight: 700; line-height: 1.25; position: relative; }
-        header p { font-size: 0.9rem; opacity: 0.92; margin-top: 0.3rem; position: relative; }
-        .ancla { display: inline-block; font-size: 1.6rem; margin-bottom: 0.2rem; animation: balanceo 3.5s ease-in-out infinite; }
-        @keyframes balanceo {
-            0%, 100% { transform: rotate(-8deg); }
-            50% { transform: rotate(8deg); }
+        header h1 { font-size: 1.3rem; font-weight: 700; line-height: 1.25; position: relative; }
+        header p { font-size: 0.88rem; opacity: 0.92; margin-top: 0.25rem; position: relative; }
+        #boton-config {
+            position: absolute; top: 0.7rem; right: 0.8rem; z-index: 2;
+            background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 50%; width: 40px; height: 40px; font-size: 1.15rem; cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
         }
+        #boton-config:hover { background: rgba(255,255,255,0.3); transform: rotate(30deg); }
 
         .barra-oficial {
             background: var(--arena-oscura);
             text-align: center;
-            padding: 0.5rem 1rem;
-            font-size: 0.82rem;
+            padding: 0.45rem 1rem;
+            font-size: 0.8rem;
             color: var(--texto-suave);
             border-bottom: 1px solid rgba(0, 58, 93, 0.1);
         }
         .barra-oficial a { color: var(--mar-claro); font-weight: 600; text-decoration: none; }
         .barra-oficial a:hover { text-decoration: underline; }
 
+        .banda-caminos {
+            background: #fff8ec;
+            border-bottom: 1px solid #f0dfba;
+            color: #7c5a10;
+            text-align: center;
+            font-size: 0.84rem;
+            padding: 0.5rem 1rem;
+            line-height: 1.4;
+        }
+        .banda-caminos strong { color: #92400e; }
+
         main {
             flex: 1;
             max-width: 680px;
             margin: 0 auto;
             width: 100%;
-            padding: 1rem;
+            padding: 0.9rem 1rem 1rem;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 230px);
-            min-height: 420px;
+            height: calc(100vh - 250px);
+            min-height: 400px;
         }
         #cuadro-conversacion {
             flex: 1;
@@ -83,6 +96,41 @@
         .contenido-mensaje { display: flex; align-items: flex-start; gap: 0.5rem; }
         .texto-mensaje { flex: 1; min-width: 0; }
         .texto-mensaje strong { color: var(--mar); }
+        .etiqueta-linea {
+            display: inline-block; background: var(--exito); color: white; border-radius: 10px;
+            font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.55rem; margin-left: 0.35rem; vertical-align: middle;
+        }
+
+        .botones-mensaje { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
+        .boton-accion {
+            display: block; width: 100%; text-align: left;
+            background: var(--blanco); color: var(--mar); font-weight: 600; font-size: 0.9rem;
+            border: 1.5px solid var(--asistente-borde); border-radius: 12px;
+            padding: 0.6rem 0.9rem; transition: all 0.18s;
+        }
+        .boton-accion:hover { background: var(--mar-claro); color: white; border-color: var(--mar-claro); transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0, 91, 150, 0.25); }
+        .boton-accion.primario { background: var(--mar-claro); color: white; border-color: var(--mar-claro); }
+        .boton-accion.primario:hover { background: var(--mar); border-color: var(--mar); }
+        .boton-accion.peligro { color: #b91c1c; border-color: #f3c4c4; }
+        .boton-accion.peligro:hover { background: #b91c1c; border-color: #b91c1c; color: white; }
+
+        .barra-estatus { display: flex; align-items: center; gap: 0; margin: 0.7rem 0 0.2rem; }
+        .paso-estatus { flex: 1; text-align: center; font-size: 0.68rem; color: var(--texto-suave); position: relative; padding-top: 1.15rem; }
+        .paso-estatus::before {
+            content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 16px; height: 16px; border-radius: 50%;
+            background: var(--arena-oscura); border: 2px solid #cbbf9f;
+        }
+        .paso-estatus::after {
+            content: ""; position: absolute; top: 7px; left: calc(50% + 10px); width: calc(100% - 20px); height: 2px; background: var(--arena-oscura);
+        }
+        .paso-estatus:last-child::after { display: none; }
+        .paso-estatus.hecho { color: var(--exito); font-weight: 600; }
+        .paso-estatus.hecho::before { background: var(--exito); border-color: var(--exito); box-shadow: 0 0 0 3px rgba(46,125,50,0.15); }
+        .paso-estatus.hecho::after, .paso-estatus.actual::after { background: var(--exito); }
+        .paso-estatus.actual { color: #92400e; font-weight: 700; }
+        .paso-estatus.actual::before { background: var(--acento); border-color: var(--acento); animation: latido 1.4s infinite; }
+        @keyframes latido { 0%,100% { box-shadow: 0 0 0 0 rgba(217,119,6,0.35);} 50% { box-shadow: 0 0 0 6px rgba(217,119,6,0);} }
 
         .boton-voz {
             background: transparent; border: none; font-size: 1.05rem; cursor: pointer;
@@ -131,6 +179,8 @@
             border: 1.5px solid var(--arena-oscura); transition: all 0.18s;
         }
         .chip:hover { background: var(--mar-claro); color: white; border-color: var(--mar-claro); transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0, 91, 150, 0.25); }
+        .chip.principal { background: var(--mar); color: white; border-color: var(--mar); font-weight: 600; }
+        .chip.principal:hover { background: var(--mar-claro); border-color: var(--mar-claro); }
 
         .fila-voz { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; }
         .interruptor { position: relative; width: 44px; height: 24px; border-radius: 12px; background: #cfd8de; transition: background 0.2s; flex-shrink: 0; }
@@ -144,27 +194,80 @@
         #aviso-micro { display: none; font-size: 0.85rem; color: #b45309; font-weight: 600; margin-top: 0.5rem; }
         #aviso-micro.visible { display: block; }
 
+        /* ---- Modales ---- */
+        .modal-fondo {
+            display: none; position: fixed; inset: 0; z-index: 50;
+            background: rgba(12, 30, 43, 0.55); backdrop-filter: blur(3px);
+            align-items: center; justify-content: center; padding: 1rem;
+        }
+        .modal-fondo.visible { display: flex; }
+        .modal {
+            background: var(--blanco); border-radius: 20px; max-width: 520px; width: 100%;
+            max-height: 88vh; overflow-y: auto; padding: 1.5rem 1.4rem;
+            box-shadow: 0 20px 60px rgba(0, 20, 35, 0.35);
+            animation: aparece-mod 0.25s ease-out;
+        }
+        @keyframes aparece-mod { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal h2 { color: var(--mar); font-size: 1.15rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem; }
+        .modal .cuerpo { font-size: 0.92rem; line-height: 1.6; color: var(--texto); }
+        .modal .cuerpo p { margin-bottom: 0.6rem; }
+        .modal .cuerpo ul { margin: 0.4rem 0 0.8rem 1.2rem; }
+        .modal .cuerpo li { margin-bottom: 0.3rem; }
+        .modal-acciones { display: flex; gap: 0.6rem; margin-top: 1.1rem; flex-wrap: wrap; }
+        .boton-modal {
+            flex: 1; min-width: 130px; padding: 0.75rem 1rem; border-radius: 12px;
+            font-size: 0.95rem; font-weight: 700; transition: all 0.18s;
+        }
+        .boton-modal.aceptar { background: var(--mar-claro); color: white; }
+        .boton-modal.aceptar:hover { background: var(--mar); }
+        .boton-modal.secundario { background: var(--arena); color: var(--mar); border: 1.5px solid var(--arena-oscura); }
+        .boton-modal.secundario:hover { background: var(--arena-oscura); }
+
+        .opciones-voz { display: flex; gap: 0.7rem; margin: 0.6rem 0 1rem; }
+        .opcion-voz {
+            flex: 1; padding: 0.9rem 0.6rem; border-radius: 14px; border: 2px solid var(--arena-oscura);
+            background: var(--blanco); cursor: pointer; text-align: center; transition: all 0.18s;
+        }
+        .opcion-voz .icono { font-size: 1.7rem; display: block; margin-bottom: 0.25rem; }
+        .opcion-voz .rotulo { font-size: 0.88rem; font-weight: 600; color: var(--texto); }
+        .opcion-voz:hover { border-color: var(--mar-claro); }
+        .opcion-voz.elegida { border-color: var(--mar-claro); background: var(--asistente); box-shadow: 0 0 0 3px rgba(0,91,150,0.12); }
+        .grid-ocupaciones { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; margin: 0.6rem 0 1rem; }
+        .opcion-ocupacion {
+            padding: 0.75rem 0.5rem; border-radius: 14px; border: 2px solid var(--arena-oscura);
+            background: var(--blanco); cursor: pointer; text-align: center; font-size: 0.82rem; font-weight: 600;
+            color: var(--texto); transition: all 0.18s; line-height: 1.35;
+        }
+        .opcion-ocupacion .icono { font-size: 1.4rem; display: block; margin-bottom: 0.2rem; }
+        .opcion-ocupacion:hover { border-color: var(--mar-claro); }
+        .opcion-ocupacion.elegida { border-color: var(--mar-claro); background: var(--asistente); box-shadow: 0 0 0 3px rgba(0,91,150,0.12); }
+
         footer { text-align: center; padding: 0.8rem 1rem 1rem; font-size: 0.8rem; color: var(--texto-suave); }
-        footer a { color: var(--mar-claro); font-weight: 600; text-decoration: none; }
+        footer a { color: var(--mar-claro); font-weight: 600; text-decoration: none; cursor: pointer; }
         footer a:hover { text-decoration: underline; }
 
         @media (max-width: 480px) {
-            main { height: calc(100vh - 280px); min-height: 360px; }
-            header h1 { font-size: 1.15rem; }
+            main { height: calc(100vh - 300px); min-height: 340px; }
+            header h1 { font-size: 1.1rem; }
             .mensaje { max-width: 96%; }
+            .grid-ocupaciones { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="ancla">⚓</div>
+    <button id="boton-config" title="Configurar voz y ocupación">⚙️</button>
     <h1>Asistente de Trámites Marítimos</h1>
-    <p>SEMAR · UNAMAN — Escribe, habla o toca un botón</p>
+    <p>SEMAR · UNAMAN — Tu amigo que te lleva de la mano</p>
 </header>
 
 <div class="barra-oficial">
-    Información basada en la página oficial: <a href="https://www.gob.mx/semar/unaman/acciones-y-programas/tramites-de-unaman-418150" target="_blank" rel="noopener noreferrer">gob.mx/semar/unaman</a>
+    Sitio de apoyo independiente. Información oficial: <a href="https://www.gob.mx/semar/unaman/acciones-y-programas/tramites-de-unaman-418150" target="_blank" rel="noopener noreferrer">gob.mx/semar/unaman</a>
+</div>
+
+<div class="banda-caminos">
+    💡 <strong>Dos caminos para tu trámite:</strong> puedes concluirlo <strong>en línea</strong> desde aquí, o presentarte en la <strong>Capitanía de Puerto</strong> de tu preferencia con tu solicitud impresa. El asistente te acompaña en ambos.
 </div>
 
 <main>
@@ -178,20 +281,7 @@
         <button id="boton-enviar" class="enviar" title="Enviar">➤</button>
     </div>
 
-    <div id="acciones">
-        <button class="chip" data-palabra="todos">📋 Todos</button>
-        <button class="chip" data-palabra="libreta a">📔 Libreta A</button>
-        <button class="chip" data-palabra="libreta b">📔 Libreta B</button>
-        <button class="chip" data-palabra="libreta c">📔 Libreta C</button>
-        <button class="chip" data-palabra="libreta d">📔 Libreta D</button>
-        <button class="chip" data-palabra="renovar">🔄 Renovar</button>
-        <button class="chip" data-palabra="pérdida">📄 Pérdida/Duplicado</button>
-        <button class="chip" data-palabra="despacho">🚢 Despacho</button>
-        <button class="chip" data-palabra="inscribir">⛵ Inscripción</button>
-        <button class="chip" data-palabra="cambio">🏠 Datos/Domicilio</button>
-        <button class="chip" data-palabra="costos">💰 Costos</button>
-        <button class="chip" data-palabra="horario">🕐 Horarios</button>
-    </div>
+    <div id="acciones"></div>
 
     <div class="fila-voz">
         <button class="interruptor" id="interruptor-voz" role="switch" aria-checked="false" title="Voz automática"></button>
@@ -202,418 +292,54 @@
 
 <footer>
     <p>Horario de atención en Capitanías: Lunes a Viernes, 9:00–13:00 h</p>
-    <p>Este sitio es de apoyo; la información oficial la emite SEMAR en <a href="https://www.gob.mx/semar/unaman/acciones-y-programas/tramites-de-unaman-418150" target="_blank" rel="noopener noreferrer">gob.mx/semar</a></p>
+    <p><a id="enlace-privacidad">Aviso de privacidad</a> · Este sitio es de apoyo; la información oficial la emite SEMAR en <a href="https://www.gob.mx/semar/unaman/acciones-y-programas/tramites-de-unaman-418150" target="_blank" rel="noopener noreferrer">gob.mx/semar</a></p>
 </footer>
 
-<script>
-// ==========================================
-// BASE DE RESPUESTAS — cada entrada tiene
-// palabras clave (sinónimos) y su respuesta
-// ==========================================
-const RESPUESTAS = [
-    {
-        claves: ["libreta a", "libreta tipo a", "marina mercante", "internacional"],
-        respuesta: `📔 LIBRETA TIPO A — Marina Mercante / Internacional
+<!-- Modal: Aviso de privacidad -->
+<div class="modal-fondo" id="modal-privacidad">
+    <div class="modal">
+        <h2>🔒 Aviso de Privacidad</h2>
+        <div class="cuerpo">
+            <p><strong>Este sitio es un asistente de apoyo independiente.</strong> No es un sitio oficial del Gobierno de México ni de SEMAR. Los trámites se concluyen únicamente en los canales oficiales de SEMAR (gob.mx) o en las Capitanías de Puerto.</p>
+            <p><strong>Qué datos se piden:</strong> solo los que tú decidas escribir para llenar tu solicitud (nombre, CURP, domicilio, teléfono, etc.).</p>
+            <p><strong>Para qué se usan:</strong> únicamente para llenar tu hoja de solicitud y tu folio de seguimiento.</p>
+            <p><strong>Quién los ve:</strong> <strong>nadie más que tú.</strong> En esta versión, toda la información se guarda solamente en tu propio dispositivo (navegador). No se envía a ningún servidor ni se comparte con nadie.</p>
+            <p><strong>Cómo borrarlos:</strong> puedes borrar tus datos desde el botón de configuración ⚙️ ("Borrar mis datos") o limpiando el historial de tu navegador.</p>
+            <p>Al continuar, aceptas este manejo de tus datos personales.</p>
+        </div>
+        <div class="modal-acciones">
+            <button class="boton-modal aceptar" id="boton-aceptar-privacidad">Acepto — quiero usar el asistente</button>
+        </div>
+    </div>
+</div>
 
-Requisitos:
-• Acta de nacimiento
-• CURP
-• INE o Pasaporte vigente
-• Comprobante de domicilio (menos de 3 meses)
-• Constancia de Situación Fiscal (RFC)
-• Examen médico autorizado por SEMAR
-• Curso STCW de Formación Básica
-• 2 fotos credencial, fondo blanco
-• Comprobante de pago
-
-📍 Lugar: Capitanía de Puerto
-🕐 Horario: Lunes a Viernes de 9:00 a 13:00 horas
-✅ Vigencia: 5 años`
-    },
-    {
-        claves: ["libreta b", "libreta tipo b", "pesca", "pescador"],
-        respuesta: `📔 LIBRETA TIPO B — Pesca
-
-Requisitos:
-• Acta de nacimiento
-• CURP
-• INE vigente
-• Comprobante de domicilio
-• Examen médico vigente
-• Constancia de actividad pesquera
-• 2 fotos credencial, fondo blanco
-• Comprobante de pago
-
-✅ Vigencia: 5 años`
-    },
-    {
-        claves: ["libreta c", "libreta tipo c", "recreo", "turismo", "deporte"],
-        respuesta: `📔 LIBRETA TIPO C — Recreo / Turismo
-
-Requisitos:
-• Acta de nacimiento
-• CURP
-• INE vigente
-• Comprobante de domicilio
-• Examen médico vigente
-• Título de Patrón de Embarcaciones de Recreo
-• 2 fotos credencial, fondo blanco
-• Comprobante de pago
-
-✅ Vigencia: 5 años`
-    },
-    {
-        claves: ["libreta d", "libreta tipo d", "plataforma", "costa afuera", "offshore"],
-        respuesta: `📔 LIBRETA TIPO D — Plataformas / Costa Afuera
-
-Requisitos:
-• Acta de nacimiento
-• CURP
-• INE vigente
-• Comprobante de domicilio
-• Constancia de Situación Fiscal (RFC)
-• Examen médico completo y vigente
-• Curso de seguridad en plataformas costa afuera
-• 2 fotos credencial, fondo blanco
-• Comprobante de pago
-
-✅ Vigencia: 5 años`
-    },
-    {
-        claves: ["renovar", "renovación", "renovacion", "vencida", "venció", "vencio", "revalidar"],
-        respuesta: `🔄 RENOVACIÓN DE LIBRETA
-
-Requisitos:
-• Libreta anterior original
-• CURP actualizada
-• Identificación oficial vigente
-• Comprobante de domicilio reciente
-• Examen médico vigente
-• 2 fotos credencial, fondo blanco
-• Comprobante de pago
-
-⚠️ Entrega tu trámite al menos 30 días antes de que venza.
-Si ya venció, se tramita como documento nuevo.`
-    },
-    {
-        claves: ["pérdida", "perdida", "perdí", "perdi", "robo", "me robaron", "extravío", "extravio", "duplicado", "me olvidé"],
-        respuesta: `📄 DUPLICADO / PÉRDIDA O ROBO
-
-Requisitos:
-• Acta de nacimiento
-• CURP
-• Identificación oficial vigente
-• Comprobante de domicilio
-• Constancia de extravío o denuncia levantada ante autoridad
-• 2 fotos credencial, fondo blanco
-• Comprobante de pago
-
-⏱️ Tiempo de entrega: 5 a 10 días hábiles.`
-    },
-    {
-        claves: ["despacho", "zarpar", "salida", "navegar", "embarcación despacho"],
-        respuesta: `🚢 DESPACHO DE EMBARCACIÓN
-
-Documentos necesarios:
-• Matrícula y documentos vigentes de la embarcación
-• Libretas Marítimas vigentes del Patrón y toda la tripulación
-• Identificación oficial de cada miembro
-• Lista de tripulantes firmada
-• Comprobante de pago de derechos
-
-⚠️ Se tramita ANTES de zarpar en la Capitanía de Puerto.`
-    },
-    {
-        claves: ["inscribir", "inscripción", "inscripcion", "matricular", "matrícula", "compré una embarcación", "bote nuevo"],
-        respuesta: `⛵ INSCRIPCIÓN DE EMBARCACIÓN
-
-Requisitos:
-• Solicitud firmada
-• Título de propiedad o documento de compraventa
-• Identificación del propietario
-• Comprobante de domicilio
-• Póliza de seguro vigente
-• Comprobante de pago
-
-📍 Lugar: Capitanía de Puerto correspondiente.`
-    },
-    {
-        claves: ["cambio", "domicilio", "datos", "me mudé", "actualizar"],
-        respuesta: `🏠 CAMBIO DE DOMICILIO O DATOS
-
-Requisitos:
-• Libreta marítima original
-• CURP actualizada
-• Nuevo comprobante de domicilio (menos de 3 meses)
-• Comprobante de pago si aplica
-
-📍 Se actualiza en la Capitanía de Puerto.`
-    },
-    {
-        claves: ["costo", "costos", "cuánto", "cuanto", "pago", "precio", "tarifa", "derechos"],
-        respuesta: `💰 COSTOS DE LOS TRÁMITES
-
-Los montos de derechos varían según el trámite y se actualizan cada año.
-
-📍 Consulta la tabla oficial de costos en:
-https://www.gob.mx/semar/unaman
-
-🤝 Apoyo para llenar documentos: $20 MXN
-
-💡 Tip: lleva efectivo o verifica los métodos de pago aceptados en tu Capitanía de Puerto.`
-    },
-    {
-        claves: ["horario", "horarios", "atención", "atencion", "abren", "cierran", "sábado", "sabado", "domingo", "días hábiles", "dias habiles"],
-        respuesta: `🕐 HORARIOS DE ATENCIÓN
-
-📍 Capitanías de Puerto:
-Lunes a Viernes de 9:00 a 13:00 horas
-
-❌ Sábados, domingos y días festivos: cerrado
-
-💡 Llega temprano: la atención es por orden de llegada.`
-    },
-    {
-        claves: ["dónde", "donde", "lugar", "dirección", "direccion", "capitanía", "capitania", "oficina"],
-        respuesta: `📍 ¿DÓNDE SE TRAMITA?
-
-Los trámites se realizan en la Capitanía de Puerto que corresponde a tu localidad.
-
-🔍 Encuentra tu Capitanía más cercana en:
-https://www.gob.mx/semar/unaman
-
-🕐 Horario: Lunes a Viernes de 9:00 a 13:00 horas`
-    },
-    {
-        claves: ["examen médico", "examen medico", "médico", "medico", "salud", "certificado médico"],
-        respuesta: `🩺 EXAMEN MÉDICO
-
-Para las libretas necesitas un examen médico autorizado por SEMAR.
-
-📍 Se realiza en el servicio médico de la Capitanía de Puerto.
-🕐 Acude en horario de atención: Lunes a Viernes de 9:00 a 13:00 h
-📋 Lleva tu identificación oficial y pregunta por los estudios que requiere tu tipo de libreta.`
-    },
-    {
-        claves: ["fotos", "foto"],
-        respuesta: `📸 FOTOGRAFÍAS
-
-• Necesitas 2 fotos tamaño credencial
-• Fondo blanco
-• Recientes y de frente
-
-💡 Muchas Capitanías tienen estudio de fotos cerca; verifica antes de ir.`
-    },
-    {
-        claves: ["todos", "lista", "opciones", "trámites", "tramites", "qué puedo", "que puedo", "ayuda", "menú", "menu"],
-        respuesta: `📋 TRÁMITES DISPONIBLES EN SEMAR-UNAMAN
-
-📔 Libreta A — Marina Mercante / Internacional
-📔 Libreta B — Pesca
-📔 Libreta C — Recreo / Turismo
-📔 Libreta D — Plataformas / Costa Afuera
-🔄 Renovación de libreta
-📄 Duplicado por pérdida o robo
-🚢 Despacho de embarcación
-⛵ Inscripción de embarcación
-🏠 Cambio de domicilio o datos
-
-Toca un botón abajo o pregunta con tus palabras, por ejemplo:
-💬 "Perdí mi libreta" · "¿Cuánto cuesta?" · "¿Dónde me presento?"`
-    },
-    {
-        claves: ["gracias", "thank", "adiós", "adios", "bye"],
-        respuesta: `🤝 ¡Con gusto! Si necesitas algo más, aquí estoy.
-
-💡 Recuerda: la información oficial la emite SEMAR en gob.mx/semar. ¡Buen viaje! ⚓`
-    },
-    {
-        claves: ["hola", "buenas", "buenos días", "buenas tardes", "buenas noches"],
-        respuesta: `¡Hola! 🤝 Soy tu asistente de trámites de SEMAR-UNAMAN.
-
-Puedo ayudarte con:
-📔 Libretas de mar (A, B, C y D)
-🔄 Renovaciones y duplicados
-🚢 Despacho e inscripción de embarcaciones
-💰 Costos, horarios y lugares
-
-¿Qué necesitas? Toca un botón o pregunta con tus propias palabras.`
-    }
-];
-
-const RESPUESTA_GENERAL = `📌 INFORMACIÓN GENERAL
-
-📍 Lugar: Capitanía de Puerto correspondiente
-🕐 Horario: Lunes a Viernes de 9:00 a 13:00 horas
-📄 Lleva copias de todos tus documentos
-💰 Costos oficiales en: gob.mx/semar
-🔒 Tus datos personales se protegen y no se comparten con nadie
-
-Escribe "todos" para ver la lista de trámites.`;
-
-// ==========================================
-// FUNCIONAMIENTO
-// ==========================================
-let reconociendo = false;
-let reconocimiento = null;
-let vozAutomatica = false;
-
-const ReconocimientoVoz = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (ReconocimientoVoz) {
-    reconocimiento = new ReconocimientoVoz();
-    reconocimiento.lang = "es-MX";
-    reconocimiento.continuous = false;
-    reconocimiento.onresult = e => {
-        document.getElementById("texto-usuario").value = e.results[0][0].transcript;
-        enviarMensaje();
-    };
-    reconocimiento.onend = () => {
-        reconociendo = false;
-        document.getElementById("boton-micro").classList.remove("escuchando");
-    };
-    reconocimiento.onerror = () => {
-        reconociendo = false;
-        document.getElementById("boton-micro").classList.remove("escuchando");
-    };
-} else {
-    document.getElementById("aviso-micro").classList.add("visible");
-}
-
-function limpiarParaVoz(texto) {
-    return texto.replace(/[•📔🔄📄🚢⛵🏠💰🕐📍⚠️✅🩺📸🤝💡❌🔍💬⚓🤖]/g, "").replace(/\s+/g, " ").trim();
-}
-
-function leerEnVoz(texto, boton) {
-    if (!("speechSynthesis" in window)) return;
-    if (boton && boton.dataset.leyendo === "si") {
-        speechSynthesis.cancel();
-        boton.dataset.leyendo = "no";
-        boton.classList.remove("leyendo");
-        return;
-    }
-    speechSynthesis.cancel();
-    if (boton) {
-        boton.dataset.leyendo = "si";
-        boton.classList.add("leyendo");
-    }
-    const voz = new SpeechSynthesisUtterance();
-    voz.text = limpiarParaVoz(texto);
-    voz.lang = "es-MX";
-    voz.rate = 0.95;
-    voz.pitch = 1.05;
-    voz.onend = () => {
-        if (boton) {
-            boton.dataset.leyendo = "no";
-            boton.classList.remove("leyendo");
-        }
-    };
-    speechSynthesis.speak(voz);
-}
-
-function buscarRespuesta(mensaje) {
-    const m = mensaje.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    let mejor = null;
-    let mejorPuntaje = 0;
-    for (const entrada of RESPUESTAS) {
-        for (const clave of entrada.claves) {
-            const c = clave.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (m.includes(c) && c.length > mejorPuntaje) {
-                mejor = entrada.respuesta;
-                mejorPuntaje = c.length;
-            }
-        }
-    }
-    return mejor || RESPUESTA_GENERAL;
-}
-
-// Escapar el texto del usuario para evitar inyección de contenido
-function escapar(texto) {
-    const div = document.createElement("div");
-    div.textContent = texto;
-    return div.innerHTML;
-}
-
-function agregarMensaje(texto, quien) {
-    const caja = document.getElementById("cuadro-conversacion");
-    const div = document.createElement("div");
-    div.className = "mensaje " + quien;
-
-    if (quien === "asistente") {
-        div.innerHTML = `
-            <div class="contenido-mensaje">
-                <span class="texto-mensaje">${texto.replace(/\n/g, "<br>")}</span>
-                <button class="boton-voz" title="Escuchar en voz alta">🔊</button>
+<!-- Modal: Configuración primera vez / engrane -->
+<div class="modal-fondo" id="modal-config">
+    <div class="modal">
+        <h2>⚓ Configura tu asistente</h2>
+        <div class="cuerpo">
+            <p id="texto-saludo-config">¡Hola! Antes de empezar, cuéntame un poco de ti para ayudarte mejor.</p>
+            <p><strong>¿Qué voz prefieres para tu asistente?</strong></p>
+            <div class="opciones-voz">
+                <button class="opcion-voz" data-voz="femenina"><span class="icono">👩</span><span class="rotulo">Voz femenina</span></button>
+                <button class="opcion-voz" data-voz="masculina"><span class="icono">👨</span><span class="rotulo">Voz masculina</span></button>
             </div>
-        `;
-        div.querySelector(".boton-voz").addEventListener("click", () => leerEnVoz(texto, div.querySelector(".boton-voz")));
-    } else {
-        div.innerHTML = `<div class="texto-mensaje">${escapar(texto)}</div>`;
-    }
+            <p><strong>¿A qué te dedicas?</strong> (para mostrarte primero lo que te sirve)</p>
+            <div class="grid-ocupaciones" id="grid-ocupaciones"></div>
+            <div class="modal-acciones">
+                <button class="boton-modal aceptar" id="boton-guardar-config" disabled>Guardar</button>
+                <button class="boton-modal secundario" id="boton-cerrar-config" style="display:none;">Cerrar</button>
+            </div>
+            <p id="fila-borrar" style="display:none; margin-top: 0.8rem; text-align:center;">
+                <a id="boton-borrar-datos" style="color:#b91c1c; font-weight:600; cursor:pointer; font-size:0.85rem;">🗑️ Borrar mis datos de este dispositivo</a>
+            </p>
+        </div>
+    </div>
+</div>
 
-    caja.appendChild(div);
-    caja.scrollTop = caja.scrollHeight;
-}
-
-function enviarMensaje() {
-    const campo = document.getElementById("texto-usuario");
-    const texto = campo.value.trim();
-    if (!texto) return;
-
-    agregarMensaje(texto, "usuario");
-    campo.value = "";
-
-    const indicador = document.getElementById("indicador");
-    indicador.classList.add("visible");
-    document.getElementById("cuadro-conversacion").scrollTop = document.getElementById("cuadro-conversacion").scrollHeight;
-
-    const respuesta = buscarRespuesta(texto);
-    setTimeout(() => {
-        indicador.classList.remove("visible");
-        agregarMensaje(respuesta, "asistente");
-        if (vozAutomatica) leerEnVoz(respuesta, null);
-    }, 500);
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    agregarMensaje(`¡Hola! 🤝 Soy tu asistente para trámites de SEMAR-UNAMAN.
-
-Puedo ayudarte a conocer los requisitos de tu trámite:
-📔 Libretas de mar · 🔄 Renovación · 🚢 Despacho · ⛵ Inscripción
-
-Toca un botón abajo, escribe tu pregunta, o mantén presionado el micrófono y habla.`, "asistente");
-
-    document.getElementById("boton-enviar").addEventListener("click", enviarMensaje);
-
-    document.getElementById("texto-usuario").addEventListener("keydown", e => {
-        if (e.key === "Enter") { e.preventDefault(); enviarMensaje(); }
-    });
-
-    document.getElementById("boton-micro").addEventListener("click", () => {
-        if (!reconocimiento) return;
-        if (!reconociendo) {
-            reconocimiento.start();
-            reconociendo = true;
-            document.getElementById("boton-micro").classList.add("escuchando");
-        } else {
-            reconocimiento.stop();
-        }
-    });
-
-    document.querySelectorAll("[data-palabra]").forEach(btn => {
-        btn.addEventListener("click", function () {
-            document.getElementById("texto-usuario").value = this.getAttribute("data-palabra");
-            enviarMensaje();
-        });
-    });
-
-    const interruptor = document.getElementById("interruptor-voz");
-    interruptor.addEventListener("click", () => {
-        vozAutomatica = !vozAutomatica;
-        interruptor.setAttribute("aria-checked", vozAutomatica ? "true" : "false");
-        if (!vozAutomatica && "speechSynthesis" in window) speechSynthesis.cancel();
-    });
-});
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="tramites.js"></script>
+<script src="app.js"></script>
 
 </body>
 </html>
