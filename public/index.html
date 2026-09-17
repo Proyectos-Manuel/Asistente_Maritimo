@@ -11,12 +11,12 @@
         header { background: var(--mar); color: white; padding: 1rem; text-align: center; }
         main { max-width: 650px; margin: 0 auto; padding: 1rem; display: flex; flex-direction: column; height: calc(100vh - 80px); }
         #cuadro-conversacion { flex: 1; overflow-y: auto; padding: 1rem; background: white; border-radius: 16px; margin-bottom: 1rem; }
-        .mensaje { margin-bottom: 1rem; padding: 0.9rem 1.1rem; border-radius: 18px; line-height: 1.5; max-width: 90%; }
+        .mensaje { margin-bottom: 1rem; padding: 0.9rem 1.1rem; border-radius: 18px; line-height: 1.6; max-width: 92%; }
         .mensaje.asistente { background: var(--asistente); border-bottom-left-radius: 4px; margin-right: auto; }
         .mensaje.usuario { background: var(--usuario); border-bottom-right-radius: 4px; margin-left: auto; }
         .contenido-mensaje { display: flex; align-items: flex-start; gap: 0.5rem; }
         .texto-mensaje { flex: 1; }
-        .boton-voz { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; padding: 0.2rem; width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; transition: background 0.2s; }
+        .boton-voz { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; padding: 0.3rem; width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; transition: all 0.2s; }
         .boton-voz:hover { background: rgba(0,91,150,0.1); }
         .boton-voz.leyendo { animation: pulso 1s infinite; background: rgba(255, 152, 0, 0.2); }
         #zona-entrada { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.8rem; }
@@ -27,25 +27,22 @@
         .micro.escuchando { animation: pulso 1s infinite; }
         .enviar { background: #4caf50; color: white; }
         #acciones { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
-        #acciones button { border-radius: 20px; width: auto; height: auto; padding: 0.6rem 1rem; font-size: 0.85rem; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        #acciones button { border-radius: 20px; width: auto; height: auto; padding: 0.7rem 1.1rem; font-size: 0.9rem; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         @keyframes pulso {
             0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
             100% { box-shadow: 0 0 0 12px rgba(255, 152, 0, 0); }
         }
-        .cargando { font-style: italic; color: #666; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>⚓ Asistente Marítimo</h1>
-    <p>Escribe o habla — te ayudo con tus trámites</p>
+    <h1>⚓ Asistente Marítimo SEMAR-UNAMAN</h1>
+    <p>Escribe, habla o toca un botón — te ayudo al instante</p>
 </header>
 
 <main>
-    <div id="cuadro-conversacion">
-        <!-- Mensajes aparecen aquí -->
-    </div>
+    <div id="cuadro-conversacion"></div>
 
     <div id="zona-entrada">
         <input type="text" id="texto-usuario" placeholder="Escribe aquí...">
@@ -54,36 +51,173 @@
     </div>
 
     <div id="acciones">
-        <button data-mensaje="¿Qué trámites hay?">📋 Ver todos</button>
-        <button data-mensaje="Libreta Tipo A">📔 Libreta A</button>
-        <button data-mensaje="Libreta Tipo B">📔 Libreta B</button>
-        <button data-mensaje="Libreta Tipo C">📔 Libreta C</button>
-        <button data-mensaje="Libreta Tipo D">📔 Libreta D</button>
-        <button data-mensaje="Renovar mi libreta">🔄 Renovar</button>
-        <button data-mensaje="Perdí mi libreta, ¿qué hago?">📄 Pérdida/Duplicado</button>
-        <button data-mensaje="Despacho de embarcación">🚢 Despacho</button>
-        <button data-mensaje="Inscribir embarcación">⛵ Inscripción</button>
-        <button data-mensaje="Cambio de domicilio">🏠 Datos/Domicilio</button>
+        <button data-palabra="todos">📋 Ver todos</button>
+        <button data-palabra="libreta a">📔 Libreta A</button>
+        <button data-palabra="libreta b">📔 Libreta B</button>
+        <button data-palabra="libreta c">📔 Libreta C</button>
+        <button data-palabra="libreta d">📔 Libreta D</button>
+        <button data-palabra="renovar">🔄 Renovar</button>
+        <button data-palabra="pérdida">📄 Pérdida/Duplicado</button>
+        <button data-palabra="despacho">🚢 Despacho</button>
+        <button data-palabra="inscribir">⛵ Inscripción</button>
+        <button data-palabra="cambio">🏠 Datos/Domicilio</button>
     </div>
 </main>
 
 <script>
-const SERVIDOR = "http://localhost:5000";
-let servidorListo = false;
+// ==========================================
+// BASE DE RESPUESTAS — TODO AQUÍ DENTRO ✅
+// ==========================================
+const RESPUESTAS = {
+    "libreta a": `📔 LIBRETA TIPO A — Marina Mercante / Internacional
+
+Requisitos:
+• Acta de nacimiento
+• CURP
+• INE o Pasaporte vigente
+• Comprobante de domicilio (menos de 3 meses)
+• Constancia de Situación Fiscal (RFC)
+• Examen médico autorizado por SEMAR
+• Curso STCW de Formación Básica
+• 2 fotos credencial, fondo blanco
+• Comprobante de pago
+
+📍 Lugar: Capitanía de Puerto
+🕐 Horario: Lunes a Viernes de 9:00 a 13:00 horas
+✅ Vigencia: 5 años`,
+
+    "libreta b": `📔 LIBRETA TIPO B — Pesca
+
+Requisitos:
+• Acta de nacimiento
+• CURP
+• INE vigente
+• Comprobante de domicilio
+• Examen médico vigente
+• Constancia de actividad pesquera
+• 2 fotos credencial, fondo blanco
+• Comprobante de pago
+
+✅ Vigencia: 5 años`,
+
+    "libreta c": `📔 LIBRETA TIPO C — Recreo / Turismo
+
+Requisitos:
+• Acta de nacimiento
+• CURP
+• INE vigente
+• Comprobante de domicilio
+• Examen médico vigente
+• Título de Patrón de Embarcaciones de Recreo
+• 2 fotos credencial, fondo blanco
+• Comprobante de pago
+
+✅ Vigencia: 5 años`,
+
+    "libreta d": `📔 LIBRETA TIPO D — Plataformas / Costa Afuera
+
+Requisitos:
+• Acta de nacimiento
+• CURP
+• INE vigente
+• Comprobante de domicilio
+• Constancia de Situación Fiscal (RFC)
+• Examen médico completo y vigente
+• Curso de seguridad en plataformas costa afuera
+• 2 fotos credencial, fondo blanco
+• Comprobante de pago
+
+✅ Vigencia: 5 años`,
+
+    "renovar": `🔄 RENOVACIÓN DE LIBRETA
+
+Requisitos:
+• Libreta anterior original
+• CURP actualizada
+• Identificación oficial vigente
+• Comprobante de domicilio reciente
+• Examen médico vigente
+• 2 fotos credencial, fondo blanco
+• Comprobante de pago
+
+⚠️ Entrega al menos 30 días antes de la fecha de vencimiento.
+Si ya venció, se tramita como documento nuevo.`,
+
+    "pérdida": `📄 DUPLICADO / PÉRDIDA O ROBO
+
+Requisitos:
+• Acta de nacimiento
+• CURP
+• Identificación oficial vigente
+• Comprobante de domicilio
+• Constancia de extravío o denuncia levantada ante autoridad
+• 2 fotos credencial, fondo blanco
+• Comprobante de pago
+
+⏱️ Tiempo de entrega: 5 a 10 días hábiles.`,
+
+    "despacho": `🚢 DESPACHO DE EMBARCACIÓN
+
+Documentos necesarios:
+• Matrícula y documentos vigentes de la embarcación
+• Libretas Marítimas vigentes del Patrón y toda la tripulación
+• Identificación oficial de cada miembro
+• Lista de tripulantes firmada
+• Comprobante de pago de derechos
+
+⚠️ Se tramita ANTES de zarpar en la Capitanía de Puerto.`,
+
+    "inscribir": `⛵ INSCRIPCIÓN DE EMBARCACIÓN
+
+Requisitos:
+• Solicitud firmada
+• Título de propiedad o documento de compraventa
+• Identificación del propietario
+• Comprobante de domicilio
+• Póliza de seguro vigente
+• Comprobante de pago
+
+📍 Lugar: Capitanía de Puerto correspondiente.`,
+
+    "cambio": `🏠 CAMBIO DE DOMICILIO O DATOS
+
+Requisitos:
+• Libreta marítima original
+• CURP actualizada
+• Nuevo comprobante de domicilio (menos de 3 meses)
+• Comprobante de pago si aplica
+
+📍 Se actualiza en Capitanía de Puerto.`,
+
+    "todos": `📋 TRÁMITES DISPONIBLES EN SEMAR-UNAMAN
+
+📔 Libreta A — Marina Mercante / Internacional
+📔 Libreta B — Pesca
+📔 Libreta C — Recreo / Turismo
+📔 Libreta D — Plataformas / Costa Afuera
+🔄 Renovación de libreta
+📄 Duplicado por pérdida o robo
+🚢 Despacho de embarcación
+⛵ Inscripción de embarcación
+🏠 Cambio de domicilio o datos
+
+Toca el trámite que necesitas para ver los detalles.`,
+
+    "general": `📌 INFORMACIÓN GENERAL
+
+📍 Lugar: Capitanía de Puerto correspondiente
+🕐 Horario: Lunes a Viernes de 9:00 a 13:00 horas
+📄 Lleva copias de todos tus documentos
+💰 Costos oficiales en: gob.mx/semar
+🤝 Apoyo para llenar documentos: $20 MXN
+🔒 Tus datos personales se protegen y no se comparten con nadie`
+};
+
+// ==========================================
+// FUNCIONAMIENTO
+// ==========================================
 let reconociendo = false;
 let reconocimiento = null;
-let mensajeSiendoLeido = null;
-
-// Verificar servidor
-async function verificarServidor() {
-    try {
-        const res = await fetch(`${SERVIDOR}/estado`);
-        servidorListo = (await res.json()).listo;
-    } catch {
-        servidorListo = false;
-    }
-}
-verificarServidor();
 
 // Reconocimiento de voz
 const ReconocimientoVoz = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -101,147 +235,102 @@ if (ReconocimientoVoz) {
     };
 }
 
-// --- FUNCIÓN DE LEER EN VOZ ---
+// Leer en voz
 function leerEnVoz(texto, boton) {
-    // Detener cualquier lectura anterior
     speechSynthesis.cancel();
-    if (mensajeSiendoLeido) {
-        mensajeSiendoLeido.classList.remove("leyendo");
-    }
-
-    // Si ya se estaba leyendo este mismo → detenerse
     if (boton && boton.dataset.leyendo === "si") {
         boton.dataset.leyendo = "no";
         return;
     }
-
-    // Marcar como leyendo
     if (boton) {
         boton.dataset.leyendo = "si";
         boton.classList.add("leyendo");
-        mensajeSiendoLeido = boton;
     }
-
-    // Iniciar lectura
     const voz = new SpeechSynthesisUtterance();
-    voz.text = texto.replace(/[*•📔📄🚢⛵🏠🔄💲⚠️]/g, " ");
+    voz.text = texto.replace(/[•📔🔄📄🚢⛵🏠📍🕐⚠️✅]/g, " ");
     voz.lang = "es-MX";
     voz.rate = 0.95;
     voz.pitch = 1.1;
-    
     voz.onend = () => {
         if (boton) {
             boton.dataset.leyendo = "no";
             boton.classList.remove("leyendo");
         }
-        mensajeSiendoLeido = null;
     };
-    
     speechSynthesis.speak(voz);
 }
 
-// --- AGREGAR MENSAJE A LA PÁGINA ---
-let contador = 0;
-function agregarMensaje(texto, quien, cargando = false) {
-    contador++;
+// Detectar respuesta
+function buscarRespuesta(mensaje) {
+    const m = mensaje.toLowerCase();
+    for (const [palabra, respuesta] of Object.entries(RESPUESTAS)) {
+        if (m.includes(palabra)) return respuesta;
+    }
+    return RESPUESTAS.todos;
+}
+
+// Agregar mensaje a pantalla
+function agregarMensaje(texto, quien) {
     const caja = document.getElementById("cuadro-conversacion");
     const div = document.createElement("div");
-    div.className = `mensaje ${quien} ${cargando ? "cargando" : ""}`;
+    div.className = `mensaje ${quien}`;
     
-    if (quien === "asistente" && !cargando) {
-        // Con botón de bocina
+    if (quien === "asistente") {
         div.innerHTML = `
             <div class="contenido-mensaje">
                 <span class="texto-mensaje">${texto.replace(/\n/g, "<br>")}</span>
                 <button class="boton-voz" title="Escuchar 🔊">🔊</button>
             </div>
         `;
-        // Conectar el botón de voz
-        const botonVoz = div.querySelector(".boton-voz");
-        botonVoz.addEventListener("click", () => leerEnVoz(texto, botonVoz));
+        div.querySelector(".boton-voz").addEventListener("click", () => leerEnVoz(texto, div.querySelector(".boton-voz")));
     } else {
-        // Sin botón de bocina
         div.innerHTML = `<div class="texto-mensaje">${texto.replace(/\n/g, "<br>")}</div>`;
     }
     
     caja.appendChild(div);
     caja.scrollTop = caja.scrollHeight;
-    return div;
 }
 
-function quitarMensaje(elemento) {
-    elemento?.remove();
-}
-
-// --- ENVIAR MENSAJE ---
-async function enviarMensaje() {
+// Enviar mensaje
+function enviarMensaje() {
     const campo = document.getElementById("texto-usuario");
     const texto = campo.value.trim();
     if (!texto) return;
-
+    
     agregarMensaje(texto, "usuario");
     campo.value = "";
-
-    const carga = agregarMensaje("Pensando... 🧠", "asistente", true);
-
-    let respuesta;
-    if (servidorListo) {
-        try {
-            const res = await fetch(`${SERVIDOR}/preguntar`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mensaje: texto })
-            });
-            if (!res.ok) throw new Error("Error");
-            respuesta = (await res.json()).respuesta;
-        } catch {
-            respuesta = "❌ No llego al servidor. ¿Está encendida la Terminal de servidor?";
-        }
-    } else {
-        respuesta = "🧠 Conectando... espera un momento y vuelve a intentar.";
-    }
-
-    quitarMensaje(carga);
-    agregarMensaje(respuesta, "asistente");
-    // ✅ YA NO LEE SOLO — solo al tocar la bocina
+    
+    const respuesta = buscarRespuesta(texto);
+    setTimeout(() => agregarMensaje(respuesta, "asistente"), 100);
 }
 
-// --- CONECTAR TODO ---
+// Conectar todo
 document.addEventListener("DOMContentLoaded", () => {
-    // Mensaje de bienvenida con bocina
-    agregarMensaje(
-        "¡Hola! 🤝 Soy tu asistente para trámites de SEMAR-UNAMAN. Escribe algo o presiona el micrófono 🎤. Toca la bocina 🔊 para escuchar la respuesta.",
-        "asistente"
-    );
-
+    // Bienvenida
+    agregarMensaje("¡Hola! 🤝 Soy tu asistente para trámites de SEMAR-UNAMAN. Toca un botón o escribe lo que necesitas.", "asistente");
+    
     // Botón enviar
     document.getElementById("boton-enviar").addEventListener("click", enviarMensaje);
     
-    // Enter en el campo
+    // Enter
     document.getElementById("texto-usuario").addEventListener("keydown", e => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            enviarMensaje();
-        }
+        if (e.key === "Enter") { e.preventDefault(); enviarMensaje(); }
     });
-
+    
     // Micrófono
     document.getElementById("boton-micro").addEventListener("click", () => {
-        if (!reconocimiento) {
-            alert("Usa Chrome para el micrófono.");
-            return;
-        }
+        if (!reconocimiento) { alert("Usa Chrome para el micrófono."); return; }
         if (!reconociendo) {
             reconocimiento.start();
             reconociendo = true;
             document.getElementById("boton-micro").classList.add("escuchando");
         }
     });
-
+    
     // Botones rápidos
-    document.querySelectorAll("[data-mensaje]").forEach(btn => {
+    document.querySelectorAll("[data-palabra]").forEach(btn => {
         btn.addEventListener("click", function() {
-            document.getElementById("texto-usuario").value = this.getAttribute("data-mensaje");
+            document.getElementById("texto-usuario").value = this.getAttribute("data-palabra");
             enviarMensaje();
         });
     });
