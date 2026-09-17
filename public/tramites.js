@@ -7,8 +7,8 @@
 // ==========================================
 
 const CATEGORIAS = [
-    { id: "libretas", nombre: "Documento de Identidad Marítima y Libreta de Mar", nombreEn: "Maritime Identity Document and Seaman's Book", emoji: "📔" },
     { id: "certificacion", nombre: "Certificación de Documentos", nombreEn: "Certification of Documents", emoji: "📜" },
+    { id: "libretas", nombre: "Documento de Identidad Marítima y Libreta de Mar", nombreEn: "Maritime Identity Document and Seaman's Book", emoji: "📔" },
     { id: "matriculas", nombre: "Matrículas, Abanderamiento y Dimensión de Bandera", nombreEn: "Ship Registry, Ensign and Flag Measurement", emoji: "⛵" },
     { id: "navegacion", nombre: "Navegación", nombreEn: "Navigation", emoji: "🧭" },
     { id: "titulos", nombre: "Títulos y Certificados de Gente de Mar", nombreEn: "Seafarer Titles and Certificates", emoji: "🎓" },

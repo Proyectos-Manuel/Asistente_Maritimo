@@ -1,5 +1,5 @@
 // ==========================================
-// ASISTENTE UNAMAN — lógica principal
+// ASISTENTE PARA TRÁMITES — lógica principal
 // Español/inglés, formato de solicitud
 // oficial por trámite, chat limpio.
 // ==========================================
@@ -91,9 +91,6 @@ function categoriaNombre(cat, idioma) {
 
 // ---------- Voz ----------
 const PRONUNCIACION = [
-    { ver: /SEMAR[- ]?UNAMAN|SEMAR\s*·\s*UNAMAN/gi, decir: "Secretaría de Marina, Unidad de la Autoridad Marítima Nacional" },
-    { ver: /SEMAR/gi, decir: "Secretaría de Marina" },
-    { ver: /UNAMAN/gi, decir: "Unidad de la Autoridad Marítima Nacional" },
     { ver: /CURP/gi, decir: "curpe" },
     { ver: /RFC/gi, decir: "erre efe ce" },
     { ver: /INE/gi, decir: "ene" },
@@ -276,22 +273,34 @@ function renderBotonesFijos() {
     }
 }
 
-// ---------- Menú de trámites por categorías oficiales ----------
+// ---------- Menú de trámites englobado por categorías ----------
 function menuTramites() {
     const idioma = idiomaFlujo();
-    let texto = t("📋 TRÁMITES POR CATEGORÍA (como aparecen en la página oficial de UNAMAN)\n\n",
-                  "📋 PROCEDURES BY CATEGORY (as listed on the official UNAMAN page)\n\n");
+    let texto = t("Elige una categoría y te muestro sus trámites:\n\n",
+                  "Pick a category and I'll show you its procedures:\n\n");
     const botones = [];
     for (const cat of CATEGORIAS) {
         const lista = TRAMITES.filter(tr => tr.categoria === cat.id);
         if (!lista.length) continue;
-        texto += cat.emoji + " " + categoriaNombre(cat, idioma).toUpperCase() + "\n";
-        for (const tr of lista) {
-            texto += "   • " + tramiteNombre(tr, idioma) + "\n";
-            botones.push({ etiqueta: tramiteNombre(tr, idioma), accion: () => elegirTramite(tr) });
-        }
-        texto += "\n";
+        texto += cat.emoji + " " + categoriaNombre(cat, idioma) + " (" + lista.length + ")\n";
+        botones.push({ etiqueta: cat.emoji + " " + categoriaNombre(cat, idioma), accion: () => menuCategoria(cat) });
     }
+    texto += "\n" + t("También puedes preguntarme por un trámite con tus palabras.", "You can also ask me about a procedure in your own words.");
+    decir(texto, botones);
+}
+
+function menuCategoria(cat) {
+    const idioma = idiomaFlujo();
+    const lista = TRAMITES.filter(tr => tr.categoria === cat.id);
+    let texto = cat.emoji + " " + categoriaNombre(cat, idioma).toUpperCase() + "\n\n";
+    const botones = lista.map(tr => ({
+        etiqueta: tramiteNombre(tr, idioma),
+        accion: () => elegirTramite(tr)
+    }));
+    botones.push({
+        etiqueta: t("↩️ Ver otras categorías", "↩️ See other categories"),
+        accion: () => menuTramites()
+    });
     texto += t("¿Cuál trámite necesitas?", "Which procedure do you need?");
     decir(texto, botones);
 }
@@ -304,13 +313,13 @@ function elegirTramite(tramite) {
     texto += tramiteSinopsis(tramite, idioma) + "\n\n";
     if (tramite.enLinea) {
         texto += t(
-            "Puedes iniciar este trámite en línea en el portal oficial de SEMAR, o puedo llenar tu solicitud en el formato oficial para imprimirla y presentarla en la Capitanía de Puerto.\n\n¿Qué prefieres?",
-            "You can start this procedure online on the official SEMAR portal, or I can fill your request in the official form to print and submit it at the Harbor Master's Office.\n\nWhat do you prefer?"
+            "Puedes iniciar este trámite en línea en el sitio oficial correspondiente, o puedo llenar tu solicitud en el formato oficial para imprimirla y presentarla en la oficina que corresponda.\n\n¿Qué prefieres?",
+            "You can start this procedure online on the corresponding official site, or I can fill your request in the official form to print and submit it at the corresponding office.\n\nWhat do you prefer?"
         );
     } else {
         texto += t(
-            "Este trámite se presenta en la Capitanía de Puerto. Puedo llenar tu solicitud en el formato oficial ahora, para que llegues con todo listo. También puedo mostrarte la guía para hacerlo en el portal oficial.\n\n¿Qué prefieres?",
-            "This procedure is submitted at the Harbor Master's Office. I can fill your request in the official form now, so you arrive ready. I can also show you the guide to do it on the official portal.\n\nWhat do you prefer?"
+            "Este trámite se presenta en la oficina que corresponda. Puedo llenar tu solicitud en el formato oficial ahora, para que llegues con todo listo. También puedo mostrarte la guía para hacerlo en línea.\n\n¿Qué prefieres?",
+            "This procedure is submitted at the corresponding office. I can fill your request in the official form now, so you arrive ready. I can also show you the guide to do it online.\n\nWhat do you prefer?"
         );
     }
     decir(texto, [
@@ -327,11 +336,11 @@ function empezarEnLinea() {
     let texto = t("Estos son los requisitos. Tenlos a la mano:\n\n", "These are the requirements. Have them ready:\n\n");
     listaRequisitos(tr, idioma).forEach((r, i) => { texto += (i + 1) + ". " + r + "\n"; });
     texto += "\n" + t(
-        "Cuando los tengas, abre el portal oficial de SEMAR y busca \"" + tramiteNombre(tr, idioma) + "\". Si te atoras en alguna pantalla, escribe \"¿cómo lleno...?\" y te explico.\n\n¿Abro el portal?",
-        "When you have them, open the official SEMAR portal and look for \"" + tramiteNombre(tr, idioma) + "\". If you get stuck on any screen, type \"how do I fill...?\" and I will explain.\n\nOpen the portal?"
+        "Cuando los tengas, abre el sitio oficial correspondiente y busca \"" + tramiteNombre(tr, idioma) + "\". Si te atoras en alguna pantalla, escribe \"¿cómo lleno...?\" y te explico.\n\n¿Abro el sitio?",
+        "When you have them, open the corresponding official site and look for \"" + tramiteNombre(tr, idioma) + "\". If you get stuck on any screen, type \"how do I fill...?\" and I will explain.\n\nOpen the site?"
     );
     decir(texto, [
-        { etiqueta: t("🌐 Abrir el portal oficial", "🌐 Open the official portal"), accion: () => abrirPortal(), estilo: "primario" },
+        { etiqueta: t("🌐 Abrir el sitio oficial", "🌐 Open the official site"), accion: () => abrirPortal(), estilo: "primario" },
         { etiqueta: t("🖨️ Mejor lléname la solicitud", "🖨️ Fill out the request form instead"), accion: () => empezarLlenado() }
     ]);
 }
@@ -341,8 +350,8 @@ function abrirPortal() {
     window.open(flujo.tramite.portal, "_blank", "noopener");
     decir(
         t(
-            "Abrí el portal oficial.\n\nRecuerda: soy solo tu guía de apoyo; el trámite se concluye en el sitio oficial de SEMAR. Si tienes dudas en el camino, escríbeme y te explico. Al terminar puedes consultar el estatus con tu folio en \"Mi solicitud\".",
-            "I opened the official portal.\n\nRemember: I am only your support guide; the procedure is completed on the official SEMAR site. If you have questions along the way, write to me and I will explain. When you finish, you can check the status with your reference number under \"My request\"."
+            "Abrí el sitio oficial.\n\nRecuerda: soy solo tu guía de apoyo; el trámite se concluye en el sitio oficial correspondiente. Si tienes dudas en el camino, escríbeme y te explico. Al terminar puedes consultar el estatus con tu folio en \"Mi solicitud\".",
+            "I opened the official site.\n\nRemember: I am only your support guide; the procedure is completed on the corresponding official site. If you have questions along the way, write to me and I will explain. When you finish, you can check the status with your reference number under \"My request\"."
         ),
         [{ etiqueta: t("✅ Ya terminé mi trámite en línea", "✅ I finished my online procedure"), accion: () => terminarEnLinea() }]
     );
@@ -364,8 +373,8 @@ function empezarLlenado() {
     flujo.paso = "llenado";
     flujo.indice = 0;
     let texto = t(
-        "Llenaré la solicitud en el formato oficial \"" + tr.clave + "\". Te haré unas preguntas, una por una, en español; la solicitud final queda en español para presentarla en la Capitanía.\n\n",
-        "I will fill the request in the official form \"" + tr.clave + "\". I will ask a few questions, one at a time, in English so you can understand everything; the final form is written in Spanish to submit it at the Harbor Master's Office.\n\n"
+        "Llenaré la solicitud en el formato oficial \"" + tr.clave + "\". Te haré unas preguntas, una por una, en español; la solicitud final queda en español para presentarla en la oficina correspondiente.\n\n",
+        "I will fill the request in the official form \"" + tr.clave + "\". I will ask a few questions, one at a time, in English so you can understand everything; the final form is written in Spanish to submit it at the corresponding office.\n\n"
     );
     texto += t("Puedes escribir \"corregir\" para volver a la pregunta anterior.", "You can type \"corregir\" to go back to the previous question.");
     decir(texto);
@@ -465,8 +474,8 @@ function concluirSolicitud() {
     resumen += "📄 " + tramiteNombre(tr, idioma) + " (" + tr.clave + ")\n";
     resumen += t("🔖 Folio de seguimiento: ", "🔖 Reference number: ") + solicitud.folio + "\n\n";
     resumen += t(
-        "Tu hoja de solicitud, en el formato oficial y en español, está lista para descargar e imprimir. Preséntala en la Capitanía con tu carpeta de documentos.",
-        "Your request sheet, in the official form and in Spanish, is ready to download and print. Submit it at the Harbor Master's Office with your document folder."
+        "Tu hoja de solicitud, en el formato oficial y en español, está lista para descargar e imprimir. Preséntala en la oficina correspondiente con tu carpeta de documentos.",
+        "Your request sheet, in the official form and in Spanish, is ready to download and print. Submit it at the corresponding office with your document folder."
     );
 
     flujo = null;
@@ -482,8 +491,8 @@ function decirCarpeta(tr, idioma) {
                   "📁 YOUR DOCUMENT FOLDER\n\nBesides your request form, bring:\n");
     listaRequisitos(tr, idioma).forEach((r, i) => { texto += (i + 1) + ". " + r + (idioma === "en" ? " (original and one copy)" : " (original y una copia)") + "\n"; });
     texto += "\n" + t(
-        "📍 Preséntate en la Capitanía de Puerto de Lunes a Viernes, de 9:00 a 13:00 h. La atención es por orden de llegada.",
-        "📍 Submit at the Harbor Master's Office Monday to Friday, 9:00 a.m. to 1:00 p.m. Service is first come, first served."
+        "📍 Preséntate en la oficina correspondiente en horario de atención. La atención es por orden de llegada.",
+        "📍 Submit at the corresponding office during office hours. Service is first come, first served."
     );
     decir(texto);
 }
@@ -503,19 +512,14 @@ function generarPDF(s) {
     let y = 18;
 
     const tramite = TRAMITES.find(x => x.id === s.tramiteId);
-    const idiomaAux = s.idiomaAuxiliar === "en";
     const dato = id => s.datos[id] || "";
-    const notaEn = id => idiomaAux && s.datos[id] ? "  (" + s.datos[id] + ")" : "";
 
-    // Encabezado oficial
+    // Encabezado del formato
     doc.setFont("helvetica", "bold"); doc.setFontSize(13);
-    doc.text("SECRETARÍA DE MARINA", 108, y, { align: "center" }); y += 6;
+    doc.text("SOLICITUD DE TRÁMITE", 108, y, { align: "center" }); y += 6;
     doc.setFontSize(11);
-    doc.text("UNIDAD DE LA AUTORIDAD MARÍTIMA NACIONAL (UNAMAN)", 108, y, { align: "center" }); y += 5;
-    doc.text("UNIDAD DE CAPITANÍAS DE PUERTO Y ASUNTOS MARÍTIMOS", 108, y, { align: "center" }); y += 7;
-
+    doc.text("Asistente para Trámites — Documento de apoyo", 108, y, { align: "center" }); y += 7;
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text("Av. Heroica Escuela Naval Militar No. 669, Col. Presidentes Ejidales, Alcaldía Coyoacán, CDMX, C.P. 04470", 108, y, { align: "center" }); y += 5;
     doc.text("Homoclave del formato: " + s.clave, M, y);
     doc.text("Folio de seguimiento: " + s.folio, M + ancho, y, { align: "right" }); y += 8;
 
@@ -523,11 +527,10 @@ function generarPDF(s) {
     doc.line(M, y, M + ancho, y); y += 7;
 
     doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-    y += pdfMultiLinea(doc, "SOLICITUD DE TRÁMITE: " + s.tramiteNombre.toUpperCase(), M, y, ancho, 5) + 1;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text("Lugar y fecha de emisión: " + dato("capitania") + ", " + formatearFecha(s.fecha, "es"), M, y); y += 7;
+    y += pdfMultiLinea(doc, s.tramiteNombre.toUpperCase(), M, y, ancho, 5) + 1;
 
-    // Secciones del formato oficial
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text("Fecha de llenado: " + formatearFecha(s.fecha, "es"), M, y); y += 7;
     const secciones = ["solicitante", "embarcacion", "tramite"];
     for (const sec of secciones) {
         const campos = tramite ? tramite.campos.filter(c => c.seccion === sec && s.datos[c.id] !== undefined) : [];
@@ -544,7 +547,7 @@ function generarPDF(s) {
             doc.setFont("helvetica", "bold");
             doc.text(campoEtiqueta(c, "es") + ":", M, y);
             doc.setFont("helvetica", "normal");
-            const valor = String(s.datos[c.id]) + (idiomaAux ? notaEn(c.id) : "");
+            const valor = String(s.datos[c.id]);
             const lineas = doc.splitTextToSize(valor, ancho - 60);
             doc.text(lineas, M + 60, y);
             y += Math.max(5.5, lineas.length * 4.6);
@@ -553,17 +556,15 @@ function generarPDF(s) {
     }
 
     // Petición
-    if (y > 235) { doc.addPage(); y = 20; }
     doc.setFont("helvetica", "bold"); doc.setFontSize(10);
     doc.text("FORMULACIÓN DE LA PETICIÓN", M, y); y += 3;
     doc.setDrawColor(180, 195, 205); doc.line(M, y, M + ancho, y); y += 6;
     doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
     const peticion = "Quien suscribe, " + (dato("nombre") || dato("nombrePropietario") || dato("nombrePatron") || dato("responsable") || dato("organizacion") || "(nombre del solicitante)") +
-        ", comparece ante la Autoridad Marítima Nacional para solicitar: " + s.tramiteNombre + ", conforme a la clave " + s.clave + ", y declara bajo protesta de decir verdad que los datos proporcionados son verídicos.";
+        ", comparece ante la autoridad correspondiente para solicitar: " + s.tramiteNombre + ", conforme a la clave " + s.clave + ", y declara bajo protesta de decir verdad que los datos proporcionados son verídicos.";
     y += pdfMultiLinea(doc, peticion, M, y, ancho, 4.6) + 5;
 
     // Documentos adjuntos
-    if (y > 235) { doc.addPage(); y = 20; }
     doc.setFont("helvetica", "bold"); doc.setFontSize(10);
     doc.text("DOCUMENTOS QUE DEBE ADJUNTAR (original y copia)", M, y); y += 3;
     doc.setDrawColor(180, 195, 205); doc.line(M, y, M + ancho, y); y += 6;
@@ -583,9 +584,8 @@ function generarPDF(s) {
 
     // Nota al pie
     doc.setFontSize(8); doc.setTextColor(120);
-    const nota = "Documento de apoyo generado por un asistente no oficial; replica la estructura del formato " + s.clave +
-        (s.claveOficial ? " (descarga oficial: gob.mx/semar/unaman, trámite " + s.claveOficial + ")" : "") +
-        ". Presentar en la Capitanía de Puerto, lunes a viernes de 9:00 a 13:00 h. Información oficial: gob.mx/semar/unaman.";
+    const nota = "Documento de apoyo generado por el Asistente para Trámites; replica la estructura del formato " + s.clave +
+        ". Preséntalo en la oficina correspondiente en horario de atención, junto con los documentos listados.";
     y += pdfMultiLinea(doc, nota, M, y, ancho, 3.6);
 
     doc.save("Solicitud_" + s.clave.replace(/[^A-Za-z0-9-]/g, "") + "_" + s.folio + ".pdf");
@@ -651,7 +651,7 @@ function avanzarEstatus(s) {
     if (i < 0 || i >= pasos.length - 1) return;
     const nuevo = pasos[i + 1];
     s.estatus = nuevo;
-    const notas = { "en proceso": "En revisión en la Capitanía de Puerto", "concluida": "Documento listo para entrega" };
+    const notas = { "en proceso": "En revisión en la oficina correspondiente", "concluida": "Documento listo para entrega" };
     s.historial.push({ estatus: nuevo, fecha: hoyISO(), nota: notas[nuevo] });
     const lista = cargarSolicitudes();
     const idx = lista.findIndex(x => x.folio === s.folio);
@@ -665,35 +665,35 @@ function respuestasInfo() {
         costos: t(
 `💰 COSTOS DE LOS TRÁMITES
 
-Los montos de derechos varían según el trámite y se actualizan cada año.
+Los montos varían según el trámite y se actualizan cada año.
 
-📍 Consulta la tabla oficial de costos en: gob.mx/semar/unaman
+📍 Consulta la tabla de costos vigente en la oficina correspondiente antes de pagar.
 
-Lleva efectivo o verifica los métodos de pago aceptados en tu Capitanía de Puerto.`,
+Lleva efectivo o verifica los métodos de pago aceptados.`,
 `💰 PROCEDURE FEES
 
 Fees vary by procedure and are updated every year.
 
-📍 Check the official fee table at: gob.mx/semar/unaman
+📍 Check the current fee table at the corresponding office before paying.
 
-Bring cash or verify the accepted payment methods at your Harbor Master's Office.`),
+Bring cash or verify the accepted payment methods.`),
         horarios: t(
 `🕐 HORARIOS DE ATENCIÓN
 
-📍 Capitanías de Puerto:
-Lunes a Viernes de 9:00 a 13:00 horas
+📍 Las oficinas de atención al público suelen operar:
+Lunes a Viernes de 9:00 a 14:00 horas
 
 Sábados, domingos y días festivos: cerrado
 
-La atención es por orden de llegada.`,
+La atención es por orden de llegada. Confirma el horario exacto en la oficina donde presentarás tu trámite.`,
 `🕐 OFFICE HOURS
 
-📍 Harbor Master's Offices:
-Monday to Friday, 9:00 a.m. to 1:00 p.m.
+📍 Public service offices usually operate:
+Monday to Friday, 9:00 a.m. to 2:00 p.m.
 
 Saturdays, Sundays and holidays: closed
 
-Service is first come, first served.`)
+Service is first come, first served. Confirm the exact schedule at the office where you will submit your procedure.`)
     };
 }
 
@@ -706,7 +706,7 @@ function procesarMensaje(texto) {
     // Flujo de llenado activo tiene prioridad
     if (flujo && flujo.paso === "pregunta-camino") {
         if (/(en l[i]nea|linea|portal|internet|online)/.test(n)) { empezarEnLinea(); return; }
-        if (/(imprimir|papel|llenar|presencial|capitan[i]a|print|form)/.test(n)) { empezarLlenado(); return; }
+        if (/(imprimir|papel|llenar|presencial|oficina|print|form)/.test(n)) { empezarLlenado(); return; }
     }
     if (flujo && flujo.paso === "llenado") { procesarRespuestaLlenado(texto); return; }
     if (flujo && flujo.paso === "consultar-folio") { procesarConsultaFolio(texto); return; }
@@ -745,8 +745,8 @@ function procesarMensaje(texto) {
     // Gracias / despedida
     if (/(gracias|adios|bye|thank)/.test(n)) {
         decir(en
-            ? "You're welcome. If you need anything else, I'm here. Official information is issued by SEMAR at gob.mx/semar."
-            : "Con gusto. Si necesitas algo más, aquí estoy. La información oficial la emite SEMAR en gob.mx/semar.");
+            ? "You're welcome. If you need anything else, I'm here to help."
+            : "Con gusto. Si necesitas algo más, aquí estoy para ayudarte.");
         return;
     }
 
@@ -811,16 +811,12 @@ Pregúntame por cualquier trámite con tus palabras, por ejemplo:
 
 function saludoPrincipal() {
     return (perfil.idioma === "en"
-? `Hello. I'm your assistant for Maritime Authority (UNAMAN — SEMAR) procedures.
+? `Hello, I'm your Procedures Assistant; I help you with any procedure, so it's easier for you.
 
-I help you understand requirements in English and fill out the official request form in Spanish, ready to print and submit at the Harbor Master's Office.
+How can I help you today?`
+: `Hola, soy tu Asistente para Trámites; te auxilio en cualquier trámite, para que te sea más fácil.
 
-What do you need?`
-: `Hola. Soy tu asistente de trámites de la Unidad de la Autoridad Marítima Nacional (UNAMAN — SEMAR).
-
-Te ayudo a llenar la solicitud oficial de tu trámite, lista para imprimir y presentar en la Capitanía de Puerto.
-
-¿Qué necesitas?`);
+¿Cómo te puedo ayudar hoy?`);
 }
 
 // ---------- Entrada del usuario ----------
@@ -887,16 +883,27 @@ function actualizarBotonGuardar() {
     document.getElementById("boton-guardar-config").disabled = !(perfil.voz && perfil.idioma);
 }
 
-function guardarConfiguracion() {
+function guardarConfiguracion(primeraVez) {
     guardarLocal(CLAVE_PERFIL, perfil);
     actualizarIdiomaMicrofono();
     actualizarPlaceholder();
     renderBotonesFijos();
     document.getElementById("modal-config").classList.remove("visible");
-    decir(t(
-        "Configuración guardada. Puedes cambiar la voz o el idioma cuando quieras desde el botón de configuración.",
-        "Settings saved. You can change the voice or language anytime from the settings button."
-    ));
+    if (primeraVez) {
+        decirSaludo();
+    } else {
+        decir(t(
+            "Configuración guardada. Puedes cambiar la voz o el idioma cuando quieras desde el botón de configuración.",
+            "Settings saved. You can change the voice or language anytime from the settings button."
+        ));
+    }
+}
+
+function decirSaludo() {
+    const saludo = saludoPrincipal();
+    decir(saludo);
+    // El saludo de bienvenida siempre suena, sin esperar a que toquen la bocina
+    if (!vozAutomatica) leerEnVoz(saludo, null);
 }
 
 function borrarDatos() {
@@ -931,14 +938,14 @@ function abrirModalPrivacidadIdioma() {
     const es = perfil.idioma !== "en";
     document.getElementById("titulo-privacidad").textContent = es ? "🔒 Aviso de Privacidad" : "🔒 Privacy Notice";
     document.getElementById("cuerpo-privacidad").innerHTML = es
-? `<p><strong>Este sitio es un asistente de apoyo independiente.</strong> No es un sitio oficial del Gobierno de México ni de SEMAR. Los trámites se concluyen únicamente en los canales oficiales de SEMAR (gob.mx) o en las Capitanías de Puerto.</p>
+? `<p><strong>Este sitio es un asistente de apoyo independiente.</strong> No está afiliado a ningún ente de gobierno; es una herramienta privada que te orienta y te ayuda a preparar tus documentos. Los trámites se concluyen únicamente en las oficinas o sitios oficiales correspondientes.</p>
 <p><strong>Qué datos se piden:</strong> solo los que tú decidas escribir para llenar tu solicitud (nombre, CURP, domicilio, teléfono, etc.).</p>
 <p><strong>Para qué se usan:</strong> únicamente para llenar tu hoja de solicitud y tu folio de seguimiento.</p>
 <p><strong>Quién los ve:</strong> <strong>nadie más que tú.</strong> Toda la información se guarda solamente en tu propio dispositivo (navegador). No se envía a ningún servidor ni se comparte con nadie.</p>
 <p><strong>Cómo borrarlos:</strong> desde el botón de configuración ⚙️ ("Borrar mis datos") o limpiando el historial de tu navegador.</p>
 <p>Al continuar, aceptas este manejo de tus datos personales.</p>`
-: `<p><strong>This site is an independent support assistant.</strong> It is not an official site of the Government of Mexico or SEMAR. Procedures are completed only through SEMAR's official channels (gob.mx) or at the Harbor Master's Offices.</p>
-<p><strong>What data is asked:</strong> only what you choose to type to fill your request form (name, CURP, address, phone, etc.).</p>
+: `<p><strong>This site is an independent support assistant.</strong> It is not affiliated with any government entity; it is a private tool that guides you and helps you prepare your documents. Procedures are completed only at the corresponding official offices or sites.</p>
+<p><strong>What data is asked:</strong> only what you choose to type to fill your request form (name, ID code, address, phone, etc.).</p>
 <p><strong>What it is used for:</strong> only to fill your request sheet and your tracking number.</p>
 <p><strong>Who sees it:</strong> <strong>nobody but you.</strong> All information is stored only on your own device (browser). It is not sent to any server nor shared with anyone.</p>
 <p><strong>How to delete it:</strong> from the settings button ⚙️ ("Borrar mis datos") or by clearing your browser history.</p>
@@ -986,7 +993,7 @@ function iniciar() {
         document.getElementById("modal-privacidad").classList.remove("visible");
         abrirModalConfig(true);
     });
-    document.getElementById("boton-guardar-config").addEventListener("click", guardarConfiguracion);
+    document.getElementById("boton-guardar-config").addEventListener("click", () => guardarConfiguracion(false));
     document.getElementById("boton-cerrar-config").addEventListener("click", () => {
         document.getElementById("modal-config").classList.remove("visible");
     });
@@ -1015,7 +1022,7 @@ function iniciar() {
     if (!acepto) {
         abrirModalPrivacidadIdioma();
     } else {
-        decir(saludoPrincipal());
+        decirSaludo();
     }
 }
 

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente para Trámites — </title>
-    <meta name="description" content="Asistente virtual con voz y chat que te acompaña paso a paso en los trámites de: libretas de mar, despacho, inscripción y más.">
+    <title>Asistente para Trámites</title>
+    <meta name="description" content="Asistente virtual con voz y chat que te acompaña paso a paso en tus trámites: te ayudo a entender requisitos y a llenar tu solicitud.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
         :root {
@@ -48,17 +48,6 @@
         }
         #boton-config:hover { background: rgba(255,255,255,0.3); transform: rotate(30deg); }
 
-        .barra-oficial {
-            background: var(--arena-oscura);
-            text-align: center;
-            padding: 0.45rem 1rem;
-            font-size: 0.8rem;
-            color: var(--texto-suave);
-            border-bottom: 1px solid rgba(0, 58, 93, 0.1);
-        }
-        .barra-oficial a { color: var(--mar-claro); font-weight: 600; text-decoration: none; }
-        .barra-oficial a:hover { text-decoration: underline; }
-
         main {
             flex: 1;
             max-width: 680px;
@@ -67,7 +56,7 @@
             padding: 0.9rem 1rem 1rem;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 200px);
+            height: calc(100vh - 175px);
             min-height: 400px;
         }
         #cuadro-conversacion {
@@ -229,13 +218,9 @@
 
 <header>
     <button id="boton-config" title="Configurar voz e idioma">⚙️</button>
-    <h1>Asistente de Trámites Marítimos</h1>
-    <p>SEMAR · UNAMAN — Asistente de apoyo para tus trámites</p>
+    <h1>Asistente para Trámites</h1>
+    <p>Tu amigo que te apoyará en todo el proceso</p>
 </header>
-
-<div class="barra-oficial">
-    Sitio de apoyo independiente. Información oficial: <a href="https://www.gob.mx/semar/unaman/acciones-y-programas/tramites-de-unaman-418150" target="_blank" rel="noopener noreferrer">gob.mx/semar/unaman</a>
-</div>
 
 <main>
     <div id="cuadro-conversacion"></div>
@@ -259,8 +244,7 @@
 </main>
 
 <footer>
-    <p id="pie-horario">Horario de atención en Capitanías: Lunes a Viernes, 9:00–13:00 h</p>
-    <p><a id="enlace-privacidad">Aviso de privacidad</a> · Este sitio es de apoyo; la información oficial la emite SEMAR en <a href="https://www.gob.mx/semar/unaman/acciones-y-programas/tramites-de-unaman-418150" target="_blank" rel="noopener noreferrer">gob.mx/semar</a></p>
+    <p><a id="enlace-privacidad">Aviso de privacidad</a> · Este sitio es una herramienta independiente de apoyo; los trámites se concluyen en los canales oficiales correspondientes.</p>
 </footer>
 
 <!-- Modal: Aviso de privacidad (contenido bilingüe lo llena app.js) -->
@@ -289,7 +273,7 @@
                 <button class="opcion-idioma" data-idioma="es"><span class="icono">🇲🇽</span><span class="rotulo">Español</span></button>
                 <button class="opcion-idioma" data-idioma="en"><span class="icono">🇺🇸</span><span class="rotulo">English</span></button>
             </div>
-            <p class="nota-idioma">Si eliges inglés, todas las explicaciones, requisitos y preguntas te las doy en inglés para que todo sea fácil de entender; la solicitud final se llena en español, lista para presentarse en la Capitanía.</p>
+            <p class="nota-idioma">Si eliges inglés, todas las explicaciones, requisitos y preguntas te las doy en inglés para que todo sea fácil de entender; la solicitud final se llena en español, lista para presentarse ante la oficina correspondiente.</p>
             <div class="modal-acciones">
                 <button class="boton-modal aceptar" id="boton-guardar-config" disabled>Guardar</button>
                 <button class="boton-modal secundario" id="boton-cerrar-config" style="display:none;">Cerrar</button>
