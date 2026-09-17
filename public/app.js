@@ -254,9 +254,7 @@ function actualizarPlaceholder() {
 // ---------- Botones fijos ----------
 function botonesFijos() {
     return [
-        { etiqueta: t("📋 Ver trámites", "📋 Procedures"), accion: () => { const x = flujo; flujo = null; menuTramites(); flujo = x; } },
-        { etiqueta: t("💰 Costos", "💰 Fees"), accion: () => decir(respuestasInfo().costos) },
-        { etiqueta: t("🕐 Horarios", "🕐 Hours"), accion: () => decir(respuestasInfo().horarios) },
+        { etiqueta: t("📋 Ver trámites de la UNAMAN", "📋 UNAMAN procedures"), accion: () => { const x = flujo; flujo = null; menuTramites(); flujo = x; } },
         { etiqueta: t("🔎 Mi solicitud", "🔎 My request"), accion: () => iniciarConsultaEstatus() }
     ];
 }
@@ -276,39 +274,84 @@ function renderBotonesFijos() {
 // ---------- Menú de trámites englobado por categorías ----------
 function menuTramites() {
     const idioma = idiomaFlujo();
-    let texto = t("Elige una categoría y te muestro sus trámites:\n\n",
-                  "Pick a category and I'll show you its procedures:\n\n");
+    let texto = t(
+        "Por ahora te acompaño con los trámites de la UNAMAN. Elige una categoría y te muestro sus trámites:",
+        "For now I can help you with UNAMAN procedures. Pick a category and I'll show you its procedures:"
+    );
     const botones = [];
     for (const cat of CATEGORIAS) {
         const lista = TRAMITES.filter(tr => tr.categoria === cat.id);
-        if (!lista.length) continue;
-        texto += cat.emoji + " " + categoriaNombre(cat, idioma) + " (" + lista.length + ")\n";
+        if (!lista.length && !RUTAS[cat.id]) continue;
         botones.push({ etiqueta: cat.emoji + " " + categoriaNombre(cat, idioma), accion: () => menuCategoria(cat) });
     }
-    texto += "\n" + t("También puedes preguntarme por un trámite con tus palabras.", "You can also ask me about a procedure in your own words.");
     decir(texto, botones);
 }
 
 function menuCategoria(cat) {
     const idioma = idiomaFlujo();
-    const lista = TRAMITES.filter(tr => tr.categoria === cat.id);
-    let texto = cat.emoji + " " + categoriaNombre(cat, idioma).toUpperCase() + "\n\n";
-    const botones = lista.map(tr => ({
-        etiqueta: tramiteNombre(tr, idioma),
-        accion: () => elegirTramite(tr)
-    }));
+    const ruta = RUTAS[cat.id];
+    let botones = [];
+    if (ruta) {
+        botones = [{
+            etiqueta: t("✨ Empezar — te pregunto lo básico", "✨ Start — I'll ask you the basics"),
+            accion: () => iniciarRuta(cat),
+            estilo: "primario"
+        }];
+    } else {
+        botones = TRAMITES.filter(tr => tr.categoria === cat.id).map(tr => ({
+            etiqueta: tramiteNombre(tr, idioma),
+            accion: () => elegirTramite(tr)
+        }));
+    }
     botones.push({
         etiqueta: t("↩️ Ver otras categorías", "↩️ See other categories"),
         accion: () => menuTramites()
     });
-    texto += t("¿Cuál trámite necesitas?", "Which procedure do you need?");
-    decir(texto, botones);
+    decir(cat.emoji + " " + categoriaNombre(cat, idioma), botones);
+}
+
+// ---------- Rutas guiadas: preguntas hasta la solicitud exacta ----------
+function iniciarRuta(cat) {
+    const idioma = idiomaFlujo();
+    flujo = { paso: "ruta", categoria: cat.id, pasoIndice: 0, respuestas: {}, tramite: null, datos: {}, indice: 0, idioma };
+    preguntarPasoRuta();
+}
+
+function preguntarPasoRuta() {
+    const idioma = idiomaFlujo();
+    const ruta = RUTAS[flujo.categoria];
+    // Avanza hasta un paso aplicable a las respuestas previas
+    while (flujo.pasoIndice < ruta.pasos.length && ruta.pasos[flujo.pasoIndice].soloSi && !ruta.pasos[flujo.pasoIndice].soloSi(flujo.respuestas)) {
+        flujo.pasoIndice++;
+    }
+    if (flujo.pasoIndice >= ruta.pasos.length) {
+        const destinoId = ruta.destino(flujo.respuestas);
+        const destino = buscarTramitePorId(destinoId);
+        flujo.paso = "elegido";
+        flujo.tramite = destino;
+        elegirTramite(destino, flujo.respuestas);
+        return;
+    }
+    const paso = ruta.pasos[flujo.pasoIndice];
+    const botones = paso.opciones.map(o => ({
+        etiqueta: (idioma === "en" ? (o.etiquetaEn || o.etiqueta) : o.etiqueta),
+        accion: () => responderPasoRuta(o)
+    }));
+    decir(idioma === "en" ? (paso.preguntaEn || paso.pregunta) : paso.pregunta, botones);
+}
+
+function responderPasoRuta(opcion) {
+    const paso = RUTAS[flujo.categoria].pasos[flujo.pasoIndice];
+    flujo.respuestas[paso.id] = opcion.valor;
+    flujo.pasoIndice++;
+    preguntarPasoRuta();
 }
 
 // ---------- Elección de trámite: ¿en línea o con formato para imprimir? ----------
-function elegirTramite(tramite) {
+function elegirTramite(tramite, respuestasRuta) {
     const idioma = idiomaFlujo();
-    flujo = { tramite, datos: {}, indice: 0, paso: "pregunta-camino", idioma };
+    const respuestas = respuestasRuta || (flujo && flujo.respuestas) || {};
+    flujo = { tramite, datos: {}, indice: 0, paso: "pregunta-camino", idioma, respuestasRuta: respuestas };
     let texto = tramiteNombre(tramite, idioma) + " (" + tramite.clave + ")\n\n";
     texto += tramiteSinopsis(tramite, idioma) + "\n\n";
     if (tramite.enLinea) {
@@ -411,6 +454,62 @@ function procesarRespuestaLlenado(texto) {
         let msg = campoPregunta(siguiente, idioma);
         if (idioma !== "en" && siguiente.ayuda) msg += "\n\n" + siguiente.ayuda;
         decir(msg);
+    } else if (tr.dictado) {
+        iniciarDictado();
+    } else {
+        concluirSolicitud();
+    }
+}
+
+// ---------- Dictado del acta de protesta ----------
+function iniciarDictado() {
+    const idioma = idiomaFlujo();
+    const tr = flujo.tramite;
+    flujo.paso = "dictado";
+    flujo.seccionDictado = 0;
+    flujo.dictadoTexto = {};
+    flujo.borradorDictado = "";
+    decir(t(
+        "Perfecto. Ahora viene la parte más importante: tu relato.\n\nTe guiaré sección por sección. Puedes hablar o escribir con calma, sin limite de palabras, y en varios mensajes si lo necesitas.",
+        "Perfect. Now comes the most important part: your account.\n\nI'll guide you section by section. Speak or write calmly, with no word limit, in as many messages as you need."
+    ));
+    const sec = tr.seccionesDictado[0];
+    decir(idioma === "en" ? sec.introduccionEn : sec.introduccion);
+}
+
+function procesarDictado(texto) {
+    const idioma = idiomaFlujo();
+    const tr = flujo.tramite;
+    const secciones = tr.seccionesDictado;
+    const n = normalizar(texto);
+    const esFin = /^(termin[eé]|termine|ya termine|listo|eso es todo|nada mas|done|finished|thats all|that s all)(\s|$)/.test(n);
+    const esCorregir = /^(corregir|repetir|correct|go back|atras)/.test(n);
+
+    if (esCorregir && !esFin) {
+        // Reinicia la sección actual para volver a dictarla
+        flujo.borradorDictado = "";
+        const sec = secciones[flujo.seccionDictado];
+        decir(t("Va, empezamos de nuevo esta parte.", "Sure, let's start this section over.") + "\n\n" + (idioma === "en" ? sec.introduccionEn : sec.introduccion));
+        return;
+    }
+
+    flujo.borradorDictado = (flujo.borradorDictado ? flujo.borradorDictado + " " : "") + texto.trim();
+
+    if (!esFin) {
+        decir(t("Anotado. Sigue con calma, o escribe \"terminé\" si ya acabaste esta parte.",
+                "Noted. Continue at your own pace, or write \"terminé\" (done) if you finished this part."));
+        return;
+    }
+
+    // Cierra la sección actual
+    const sec = secciones[flujo.seccionDictado];
+    flujo.dictadoTexto[sec.id] = flujo.borradorDictado;
+    flujo.borradorDictado = "";
+    flujo.seccionDictado++;
+
+    if (flujo.seccionDictado < secciones.length) {
+        const siguiente = secciones[flujo.seccionDictado];
+        decir(idioma === "en" ? siguiente.introduccionEn : siguiente.introduccion);
     } else {
         concluirSolicitud();
     }
@@ -461,6 +560,7 @@ function concluirSolicitud() {
         curp: curp,
         idiomaAuxiliar: idioma,
         datos: { ...flujo.datos },
+        dictado: flujo.dictadoTexto ? { ...flujo.dictadoTexto } : null,
         requisitos: tr.requisitos,
         estatus: "recibida",
         historial: [{ estatus: "recibida", fecha: hoyISO(), nota: "Solicitud creada en el asistente" }]
@@ -490,11 +590,8 @@ function decirCarpeta(tr, idioma) {
     let texto = t("📁 TU CARPETA PARA LA VENTANILLA\n\nAdemás de tu solicitud, lleva:\n",
                   "📁 YOUR DOCUMENT FOLDER\n\nBesides your request form, bring:\n");
     listaRequisitos(tr, idioma).forEach((r, i) => { texto += (i + 1) + ". " + r + (idioma === "en" ? " (original and one copy)" : " (original y una copia)") + "\n"; });
-    texto += "\n" + t(
-        "📍 Preséntate en la oficina correspondiente en horario de atención. La atención es por orden de llegada.",
-        "📍 Submit at the corresponding office during office hours. Service is first come, first served."
-    );
     decir(texto);
+    decirHorariosPresentacion();
 }
 
 // ---------- PDF: solicitud en formato oficial ----------
@@ -563,6 +660,20 @@ function generarPDF(s) {
     const peticion = "Quien suscribe, " + (dato("nombre") || dato("nombrePropietario") || dato("nombrePatron") || dato("responsable") || dato("organizacion") || "(nombre del solicitante)") +
         ", comparece ante la autoridad correspondiente para solicitar: " + s.tramiteNombre + ", conforme a la clave " + s.clave + ", y declara bajo protesta de decir verdad que los datos proporcionados son verídicos.";
     y += pdfMultiLinea(doc, peticion, M, y, ancho, 4.6) + 5;
+
+    // Dictado del acta de protesta (secciones de la descripción de los hechos)
+    if (s.dictado) {
+        for (const sec of tramite.seccionesDictado || Object.keys(s.dictado).map(k => ({ id: k, etiqueta: k }))) {
+            const texto = s.dictado[sec.id];
+            if (!texto) continue;
+            if (y > 235) { doc.addPage(); y = 20; }
+            doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+            doc.text(sec.etiqueta.toUpperCase(), M, y); y += 3;
+            doc.setDrawColor(180, 195, 205); doc.line(M, y, M + ancho, y); y += 6;
+            doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+            y += pdfMultiLinea(doc, texto, M, y, ancho, 4.6) + 5;
+        }
+    }
 
     // Documentos adjuntos
     doc.setFont("helvetica", "bold"); doc.setFontSize(10);
@@ -659,42 +770,20 @@ function avanzarEstatus(s) {
     mostrarEstatus(s);
 }
 
-// ---------- Respuestas informativas ----------
-function respuestasInfo() {
-    return {
-        costos: t(
-`💰 COSTOS DE LOS TRÁMITES
+// ---------- Horarios: solo cuando el usuario va a presentarse ----------
+function decirHorariosPresentacion() {
+    decir(t(
+`🕐 PARA PRESENTAR TU TRÁMITE
 
-Los montos varían según el trámite y se actualizan cada año.
+📍 Las oficinas de atención al público suelen operar de Lunes a Viernes de 9:00 a 14:00 horas; sábados, domingos y días festivos están cerradas.
 
-📍 Consulta la tabla de costos vigente en la oficina correspondiente antes de pagar.
+La atención es por orden de llegada. Lleva tu solicitud impresa y tu carpeta de documentos. Confirma el horario exacto en la oficina correspondiente.`,
+`🕐 TO SUBMIT YOUR PROCEDURE
 
-Lleva efectivo o verifica los métodos de pago aceptados.`,
-`💰 PROCEDURE FEES
+📍 Public service offices usually operate Monday to Friday, 9:00 a.m. to 2:00 p.m.; Saturdays, Sundays and holidays are closed.
 
-Fees vary by procedure and are updated every year.
-
-📍 Check the current fee table at the corresponding office before paying.
-
-Bring cash or verify the accepted payment methods.`),
-        horarios: t(
-`🕐 HORARIOS DE ATENCIÓN
-
-📍 Las oficinas de atención al público suelen operar:
-Lunes a Viernes de 9:00 a 14:00 horas
-
-Sábados, domingos y días festivos: cerrado
-
-La atención es por orden de llegada. Confirma el horario exacto en la oficina donde presentarás tu trámite.`,
-`🕐 OFFICE HOURS
-
-📍 Public service offices usually operate:
-Monday to Friday, 9:00 a.m. to 2:00 p.m.
-
-Saturdays, Sundays and holidays: closed
-
-Service is first come, first served. Confirm the exact schedule at the office where you will submit your procedure.`)
-    };
+Service is first come, first served. Bring your printed request form and your document folder. Confirm the exact schedule at the corresponding office.`
+    ));
 }
 
 // ---------- Motor de conversación ----------
@@ -709,6 +798,7 @@ function procesarMensaje(texto) {
         if (/(imprimir|papel|llenar|presencial|oficina|print|form)/.test(n)) { empezarLlenado(); return; }
     }
     if (flujo && flujo.paso === "llenado") { procesarRespuestaLlenado(texto); return; }
+    if (flujo && flujo.paso === "dictado") { procesarDictado(texto); return; }
     if (flujo && flujo.paso === "consultar-folio") { procesarConsultaFolio(texto); return; }
     if (flujo && flujo.paso === "consultar-curp") { procesarConsultaCurp(texto); return; }
 
@@ -737,10 +827,21 @@ function procesarMensaje(texto) {
     }
     if (mejor) { elegirTramite(mejor); return; }
 
-    // Respuestas informativas
-    const info = respuestasInfo();
-    if (/(costo|costos|cuanto|pago|precio|tarifa|derechos|fee|fees|cost|price|pay)/.test(n)) { decir(info.costos); return; }
-    if (/(horario|horarios|atencion|abren|cierran|sabado|domingo|hours|open|close)/.test(n)) { decir(info.horarios); return; }
+    // Respuestas informativas (los horarios se explican solo al final del llenado)
+    if (/(costo|costos|cuanto cuesta|cuanto vale|pago|precio|tarifa|derechos|fee|fees|cost|price)/.test(n)) {
+        decir(t(
+            "Los montos varían según el trámite y se actualizan cada año. Al terminar tu solicitud te indico dónde consultarlos y pagar.",
+            "Fees vary by procedure and are updated every year. When your request is done, I'll tell you where to check and pay them."
+        ));
+        return;
+    }
+    if (/(horario|horarios|atencion|abren|cierran|sabado|domingo|hours|open|close)/.test(n)) {
+        decir(t(
+            "Los horarios de atención los confirmo cuando tengas tu solicitud lista, junto con la oficina donde presentarla.",
+            "I'll confirm the office hours when your request form is ready, along with the office where to submit it."
+        ));
+        return;
+    }
 
     // Gracias / despedida
     if (/(gracias|adios|bye|thank)/.test(n)) {
@@ -928,8 +1029,8 @@ function limpiarConversacion() {
     modoEnLinea = false;
     document.getElementById("cuadro-conversacion").innerHTML = "";
     decir(t(
-        "Conversación limpia. ¿En qué te ayudo?",
-        "Conversation cleared. How can I help you?"
+        "Nueva consulta. ¿En qué te ayudo?",
+        "New inquiry. How can I help you?"
     ));
 }
 
