@@ -5,7 +5,8 @@
 // ==========================================
 
 // ---------- Estado global ----------
-let vozAutomatica = false;
+const CLAVE_VOZ = "unaman_voz_automatica";
+let vozAutomatica = leerLocal(CLAVE_VOZ, true);
 let reconocimiento = null;
 let reconociendo = false;
 let perfil = { voz: null, idioma: "es" };
@@ -73,8 +74,7 @@ function campoPregunta(c, idioma) {
     return idioma === "en" ? (c.preguntaEn || c.pregunta) : c.pregunta;
 }
 
-// Pregunta adaptada al solicitante: pasaporte si es extranjero, RFC si es
-// persona moral, y asterisco en los campos obligatorios de la ficha oficial
+// Pregunta adaptada al solicitante: pasaporte si es extranjero, RFC si es persona moral
 function campoPreguntaActual(c, idioma) {
     let pregunta = campoPregunta(c, idioma);
     const sol = flujo && flujo.solicitante;
@@ -85,7 +85,6 @@ function campoPreguntaActual(c, idioma) {
             pregunta = t("¿Cuál es su RFC? Son 12 o 13 letras y números. Si aún no tiene RFC, escribe \"no tengo\".", "What is its tax ID (RFC)? If it does not have one yet, write \"no tengo\".");
         }
     }
-    if (c.obligatorio) pregunta = "* " + pregunta;
     return pregunta;
 }
 
@@ -227,8 +226,8 @@ const PASOS_TUTORIAL = [
     {
         id: "cuota",
         texto: () => t(
-            "Para mantenerme funcionando, mi contribución es de $10 MXN por una interacción, y con eso te apoyo durante 24 horas.\n\nSi estás de acuerdo, al final te proporcionaré un enlace para realizar ese depósito.\n\nAl continuar, aceptas también los términos y condiciones de uso y el manejo confidencial de tus datos personales: todo lo que escribas se queda únicamente en tu dispositivo, nadie más lo ve.",
-            "To keep me running, my support contribution is $10 MXN per interaction, and it includes my assistance for 24 hours.\n\nIf you agree, at the end I will provide a link for that payment.\n\nBy continuing, you also accept the terms and conditions of use and the confidential handling of your personal data: everything you write stays only on your device; nobody else sees it."
+            "Para mantenerme funcionando, mi contribución es de 10 pesos mexicanos por una interacción, y con eso te apoyo durante 24 horas.\n\nSi estás de acuerdo, al final te proporcionaré un enlace para realizar ese depósito.\n\nAl continuar, aceptas también los términos y condiciones de uso y el manejo confidencial de tus datos personales: todo lo que escribas se queda únicamente en tu dispositivo, nadie más lo ve.",
+            "To keep me running, my support contribution is 10 Mexican pesos per interaction, and it includes my assistance for 24 hours.\n\nIf you agree, at the end I will provide a link for that payment.\n\nBy continuing, you also accept the terms and conditions of use and the confidential handling of your personal data: everything you write stays only on your device; nobody else sees it."
         ),
         boton: () => t("✅ Estoy de acuerdo", "✅ I agree"),
         alAceptar: () => pasoTutorial(2)
@@ -246,8 +245,8 @@ const PASOS_TUTORIAL = [
     {
         id: "herramientas",
         texto: () => t(
-            "Conozcamos las herramientas de la pantalla:\n\n🎤 Micrófono — para hablarme en lugar de escribir.\n➤ Enviar — manda tu mensaje.\n🧹 Empezar de nuevo — la brocha limpia la conversación y arrancamos frescos.\n🔊 Voz automática — el interruptor de abajo: si lo enciendes, leo todas mis respuestas en voz alta sin que toques la bocina.\n⚙️ Configuración — el engranaje arriba a la derecha: ahí puedes cambiar tu voz, tu idioma y reiniciar el asistente para volver a ver este tutorial desde el principio.",
-            "Let's look at the tools on the screen:\n\n🎤 Microphone — talk to me instead of typing.\n➤ Send — sends your message.\n🧹 Start over — the brush clears the conversation and we start fresh.\n🔊 Automatic voice — the switch below: if you turn it on, I read all my answers out loud without you tapping the speaker.\n⚙️ Settings — the gear at the top right: there you can change your voice, your language, and restart the assistant to see this tutorial from the beginning."
+            "Conozcamos las herramientas de la pantalla:\n\n🎤 Micrófono — para hablarme en lugar de escribir.\n➤ Enviar — manda tu mensaje.\n🧹 Empezar de nuevo — la brocha limpia la conversación y arrancamos frescos.\n🔊 Voz automática — el interruptor de abajo: ya la encendí por ti, así que leo todas mis respuestas en voz alta sin que toques la bocina. Al final del tutorial te preguntaré si quieres dejarla encendida o prefieres apagarla.\n⚙️ Configuración — el engranaje arriba a la derecha: ahí puedes cambiar tu voz, tu idioma y reiniciar el asistente para volver a ver este tutorial desde el principio.",
+            "Let's look at the tools on the screen:\n\n🎤 Microphone — talk to me instead of typing.\n➤ Send — sends your message.\n🧹 Start over — the brush clears the conversation and we start fresh.\n🔊 Automatic voice — the switch below: I already turned it on for you, so I read all my answers out loud without you tapping the speaker. At the end of the tutorial I will ask whether you want to keep it on or turn it off.\n⚙️ Settings — the gear at the top right: there you can change your voice, your language, and restart the assistant to see this tutorial from the beginning."
         ),
         boton: () => t("➡️ Siguiente", "➡️ Next"),
         alAceptar: () => pasoTutorial(4)
@@ -255,8 +254,8 @@ const PASOS_TUTORIAL = [
     {
         id: "apoyo",
         texto: () => t(
-            "Durante el trámite te acompaño así:\n\n• Te explico cada trámite con la información de su ficha oficial.\n• Las preguntas que empiezan con asterisco (*) son campos obligatorios de la ficha oficial.\n• Te pregunto si eres persona física o moral, y si eres nacional o extranjero; si eres extranjero, en lugar de tu CURP te pido el número de tu pasaporte.\n\n¿Listo? Empecemos.",
-            "During your procedure I support you like this:\n\n• I explain each procedure with its official information sheet.\n• Questions starting with an asterisk (*) are required fields from the official form.\n• I ask whether you are an individual or a company, and whether you are a national or a foreigner; if you are a foreigner, I ask for your passport number instead of your CURP.\n\nReady? Let's start."
+            "Durante el trámite te acompaño así:\n\n• Te explico cada trámite con la información de su ficha oficial: para qué sirve, requisitos y preguntas, en el orden de la ficha.\n• Te pregunto si eres persona física o moral, y si eres nacional o extranjero; si eres extranjero, en lugar de tu CURP te pido el número de tu pasaporte.\n\n¿Listo? Empecemos.",
+            "During your procedure I support you like this:\n\n• I explain each procedure with its official information sheet: what it is for, requirements and questions, in the sheet's order.\n• I ask whether you are an individual or a company, and whether you are a national or a foreigner; if you are a foreigner, I ask for your passport number instead of your CURP.\n\nReady? Let's start."
         ),
         boton: () => t("🚀 Empezar", "🚀 Start"),
         alAceptar: () => terminarTutorial()
@@ -294,7 +293,23 @@ function terminarTutorial() {
     tutorial = null;
     document.getElementById("zona-entrada").style.opacity = "";
     document.getElementById("zona-entrada").style.pointerEvents = "";
-    decir(t("Perfecto, ya estamos listos. ¿En qué te ayudo hoy?", "Perfect, we are all set. How can I help you today?"));
+    decir(t(
+        "Perfecto, ya estamos listos. Última pregunta: la voz automática está encendida, ¿quieres dejarla así?",
+        "Perfect, we are all set. Last question: the automatic voice is on, do you want to keep it that way?"
+    ), [
+        { etiqueta: t("🔊 Dejar la voz encendida", "🔊 Keep the voice on"), accion: () => fijarVozAutomatica(true) },
+        { etiqueta: t("🔇 Apagar la voz", "🔇 Turn the voice off"), accion: () => fijarVozAutomatica(false) }
+    ]);
+}
+
+function fijarVozAutomatica(activa) {
+    vozAutomatica = activa;
+    guardarLocal(CLAVE_VOZ, activa);
+    document.getElementById("interruptor-voz").setAttribute("aria-checked", activa ? "true" : "false");
+    if (!activa && "speechSynthesis" in window) speechSynthesis.cancel();
+    decir(activa
+        ? t("Voz automática encendida. Te leeré todas mis respuestas. Puedes cambiarla cuando quieras con el interruptor de abajo. ¿En qué te ayudo hoy?", "Automatic voice on. I will read all my answers to you. You can change it anytime with the switch below. How can I help you today?")
+        : t("Voz automática apagada. Puedes encenderla cuando quieras con el interruptor de abajo. ¿En qué te ayudo hoy?", "Automatic voice off. You can turn it on anytime with the switch below. How can I help you today?"));
 }
 
 function agregarMensajeConTutor(texto, paso, conOpciones) {
@@ -523,7 +538,10 @@ function elegirTramite(tramite, respuestasRuta) {
     const respuestas = respuestasRuta || (flujo && flujo.respuestas) || {};
     flujo = { tramite, datos: {}, indice: 0, paso: "pregunta-camino", idioma, respuestasRuta: respuestas };
     let texto = tramiteNombre(tramite, idioma) + " (" + tramite.clave + ")\n\n";
-    texto += tramiteSinopsis(tramite, idioma) + "\n\n";
+    texto += t("¿Para qué sirve? ", "What is it for? ") + tramiteSinopsis(tramite, idioma) + "\n\n";
+    texto += t("Estos son los requisitos de su ficha oficial:\n", "These are the requirements from its official information sheet:\n");
+    listaRequisitos(tramite, idioma).forEach((r, i) => { texto += (i + 1) + ". " + r + "\n"; });
+    texto += "\n";
     if (tramite.enLinea) {
         texto += t(
             "Puedes iniciar este trámite en línea en el sitio oficial correspondiente, o puedo llenar tu solicitud en el formato oficial para imprimirla y presentarla en la oficina que corresponda.\n\n¿Qué prefieres?",
@@ -531,14 +549,16 @@ function elegirTramite(tramite, respuestasRuta) {
         );
     } else {
         texto += t(
-            "Este trámite se presenta en la oficina que corresponda. Puedo llenar tu solicitud en el formato oficial ahora, para que llegues con todo listo. También puedo mostrarte la guía para hacerlo en línea.\n\n¿Qué prefieres?",
-            "This procedure is submitted at the corresponding office. I can fill your request in the official form now, so you arrive ready. I can also show you the guide to do it online.\n\nWhat do you prefer?"
+            "Este trámite se presenta de manera presencial en la Capitanía de Puerto; no se hace por internet. Puedo llenar tu solicitud en el formato oficial ahora, para que llegues con todo listo.\n\n¿Llenamos tu solicitud?",
+            "This procedure is submitted in person at the Harbor Master's Office; it cannot be done online. I can fill your request in the official form now, so you arrive ready.\n\nShall we fill out your request?"
         );
     }
-    decir(texto, [
-        { etiqueta: t("🌐 Hacerlo en línea", "🌐 Do it online"), accion: () => empezarEnLinea(), estilo: "primario" },
-        { etiqueta: t("🖨️ Llenar la solicitud para imprimir", "🖨️ Fill out the request form to print"), accion: () => empezarLlenado() }
-    ]);
+    const botones = [];
+    if (tramite.enLinea) {
+        botones.push({ etiqueta: t("🌐 Hacerlo en línea", "🌐 Do it online"), accion: () => empezarEnLinea(), estilo: "primario" });
+    }
+    botones.push({ etiqueta: t("🖨️ Llenar la solicitud para imprimir", "🖨️ Fill out the request form to print"), accion: () => empezarLlenado(), estilo: tramite.enLinea ? "" : "primario" });
+    decir(texto, botones);
 }
 
 function empezarEnLinea() {
@@ -560,7 +580,7 @@ function empezarEnLinea() {
 
 function abrirPortal() {
     const idioma = idiomaFlujo();
-    window.open(flujo.tramite.portal, "_blank", "noopener");
+    window.open(tr.portal || "https://www.gob.mx/semar/unaman", "_blank", "noopener");
     decir(
         t(
             "Abrí el sitio oficial.\n\nRecuerda: soy solo tu guía de apoyo; el trámite se concluye en el sitio oficial correspondiente. Si tienes dudas en el camino, escríbeme y te explico. Al terminar puedes consultar el estatus con tu folio en \"Mi solicitud\".",
@@ -590,8 +610,9 @@ function empezarLlenado() {
         "Llenaré la solicitud en el formato oficial \"" + tr.clave + "\". Te haré unas preguntas, una por una, en español; la solicitud final queda en español para presentarla en la oficina correspondiente.\n\n",
         "I will fill the request in the official form \"" + tr.clave + "\". I will ask a few questions, one at a time, in English so you can understand everything; the final form is written in Spanish to submit it at the corresponding office.\n\n"
     );
-    texto += t("Las preguntas que empiezan con asterisco (*) son campos obligatorios de la ficha oficial. ", "Questions starting with an asterisk (*) are required fields from the official form. ");
-    texto += t("Puedes escribir \"corregir\" para volver a la pregunta anterior.", "You can type \"corregir\" to go back to the previous question.");
+    texto += t("Te repito los requisitos de la ficha oficial para que los tengas a la mano:\n", "Here are the official requirements again, so you have them handy:\n");
+    listaRequisitos(tr, idioma).forEach((r, i) => { texto += (i + 1) + ". " + r + "\n"; });
+    texto += "\n" + t("Puedes escribir \"corregir\" para volver a la pregunta anterior.", "You can type \"corregir\" to go back to the previous question.");
     decir(texto);
     decir(t("Antes de empezar: ¿eres persona física (una persona) o persona moral (una empresa u organización)?",
             "First: are you an individual (a person) or a company/organization?"), [
@@ -759,11 +780,11 @@ function validarCampo(campo, valor, idioma, solicitante) {
 function mensajePago(solicitud, continuar) {
     const tieneEnlace = ENLACE_PAGO && ENLACE_PAGO.length > 0;
     const enlace = tieneEnlace
-        ? '<a href="' + escapar(ENLACE_PAGO) + '" target="_blank" rel="noopener" style="color:var(--mar-claro); font-weight:700;">' + t("Realizar el depósito de $10 MXN", "Make the $10 MXN payment") + '</a>'
-        : '<strong style="color:#b45309;">' + t("[ENLACE DE PAGO POR COLOCAR — $10 MXN]", "[PAYMENT LINK TO BE ADDED — $10 MXN]") + '</strong>';
+        ? '<a href="' + escapar(ENLACE_PAGO) + '" target="_blank" rel="noopener" style="color:var(--mar-claro); font-weight:700;">' + t("Realizar el depósito de 10 pesos mexicanos", "Make the 10 Mexican pesos payment") + '</a>'
+        : '<strong style="color:#b45309;">' + t("[ENLACE DE PAGO POR COLOCAR — 10 PESOS MEXICANOS]", "[PAYMENT LINK TO BE ADDED — 10 MEXICAN PESOS]") + '</strong>';
     const texto = t(
-        "Tu contribución de apoyo es de $10 MXN por esta interacción, con mi acompañamiento durante 24 horas.\n\nSi estás de acuerdo, realiza el depósito aquí:\n\n",
-        "Your support contribution is $10 MXN for this interaction, with my support for 24 hours.\n\nIf you agree, make the payment here:\n\n"
+        "Tu contribución de apoyo es de 10 pesos mexicanos por esta interacción, con mi acompañamiento durante 24 horas.\n\nSi estás de acuerdo, realiza el depósito aquí:\n\n",
+        "Your support contribution is 10 Mexican pesos for this interaction, with my support for 24 hours.\n\nIf you agree, make the payment here:\n\n"
     ) + enlace + "\n\n" + t("Cuando termines, toca el botón de abajo para descargar tu solicitud.", "When you are done, tap the button below to download your request.");
     agregarMensaje(texto, "asistente", [
         { etiqueta: t("🖨️ Continuar: descargar solicitud en formato oficial (PDF)", "🖨️ Continue: download official request form (PDF)"), accion: continuar, estilo: "primario" },
@@ -1023,7 +1044,7 @@ function procesarMensaje(texto) {
 
     // Flujo de llenado activo tiene prioridad
     if (flujo && flujo.paso === "pregunta-camino") {
-        if (/(en l[i]nea|linea|portal|internet|online)/.test(n)) { empezarEnLinea(); return; }
+        if (/(en l[i]nea|linea|portal|internet|online)/.test(n) && flujo.tramite && flujo.tramite.enLinea) { empezarEnLinea(); return; }
         if (/(imprimir|papel|llenar|presencial|oficina|print|form)/.test(n)) { empezarLlenado(); return; }
     }
     if (flujo && flujo.paso === "llenado") { procesarRespuestaLlenado(texto); return; }
@@ -1248,6 +1269,7 @@ function borrarDatos() {
     localStorage.removeItem(CLAVE_SOLICITUDES);
     localStorage.removeItem(CLAVE_PERFIL);
     localStorage.removeItem(CLAVE_PRIMER_USO);
+    localStorage.removeItem(CLAVE_VOZ);
     perfil = { voz: null, idioma: "es" };
     flujo = null;
     renderBotonesFijos();
@@ -1278,10 +1300,11 @@ function reiniciarAsistente() {
     localStorage.removeItem(CLAVE_PERFIL);
     localStorage.removeItem(CLAVE_TUTORIAL);
     localStorage.removeItem(CLAVE_PRIMER_USO);
+    localStorage.removeItem(CLAVE_VOZ);
     perfil = { voz: null, idioma: "es" };
     flujo = null;
     tutorial = null;
-    vozAutomatica = false;
+    vozAutomatica = true;
     document.getElementById("interruptor-voz").setAttribute("aria-checked", "false");
     document.getElementById("modal-config").classList.remove("visible");
     document.getElementById("cuadro-conversacion").innerHTML = "";
@@ -1319,6 +1342,7 @@ function iniciar() {
     if (perfilGuardado) perfil = { voz: null, idioma: "es", ...perfilGuardado };
 
     renderBotonesFijos();
+    document.getElementById("interruptor-voz").setAttribute("aria-checked", vozAutomatica ? "true" : "false");
     actualizarPlaceholder();
     actualizarIdiomaMicrofono();
     configurarMicrofono();
@@ -1343,6 +1367,7 @@ function iniciar() {
     document.getElementById("interruptor-voz").addEventListener("click", function () {
         vozAutomatica = !vozAutomatica;
         this.setAttribute("aria-checked", vozAutomatica ? "true" : "false");
+        guardarLocal(CLAVE_VOZ, vozAutomatica);
         if (!vozAutomatica && "speechSynthesis" in window) speechSynthesis.cancel();
     });
 

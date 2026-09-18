@@ -138,9 +138,9 @@
             40% { transform: translateY(-5px); opacity: 1; }
         }
 
-        #zona-entrada { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.8rem; }
+        #zona-entrada { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.8rem; }
         #texto-usuario {
-            flex: 1; padding: 0.85rem 1.1rem; border: 1.5px solid var(--arena-oscura);
+            flex: 1 1 150px; min-width: 0; padding: 0.85rem 1.1rem; border: 1.5px solid var(--arena-oscura);
             border-radius: 25px; font-size: 1rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
             background: var(--blanco); color: var(--texto); font-family: inherit;
         }

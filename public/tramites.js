@@ -767,6 +767,24 @@ const TRAMITES = [
     }
 ];
 
+// ---------- Estatus en línea según el instructivo oficial de SEMAR ----------
+// Ingresables por internet: el grupo de embarcaciones y matrículas
+// (SEMAR-05-001 a 007, 015, 017 a 022). La identidad marítima (Libreta de Mar
+// 009, Documento de Identidad Marítima 010) y los accidentes se presentan en
+// persona en la Capitanía de Puerto.
+const TRAMITES_EN_LINEA = new Set([
+    "certificacion-documentos",
+    "mat-001", "mat-002", "mat-003", "mat-004a", "mat-004b", "mat-004c", "mat-004d", "mat-004e", "mat-005",
+    "arribo-menor-altura", "arribo-menor-cabotaje", "arribo-mayor-altura", "arribo-mayor-cabotaje", "despacho"
+]);
+const PORTAL_UNAMAN = "https://www.gob.mx/semar/unaman";
+TRAMITES.forEach(tr => {
+    if (TRAMITES_EN_LINEA.has(tr.id)) {
+        tr.enLinea = true;
+        if (!tr.portal) tr.portal = PORTAL_UNAMAN;
+    }
+});
+
 // ---------- Búsqueda global de trámites ----------
 function buscarTramitePorId(id) {
     return TRAMITES.find(x => x.id === id) || null;
