@@ -15,6 +15,10 @@ let modoEnLinea = false;
 const CLAVE_PRIMER_USO = "unaman_privacidad_aceptada";
 const CLAVE_PERFIL = "unaman_perfil";
 const CLAVE_SOLICITUDES = "unaman_solicitudes";
+// ⚠️ MARCADOR DE PAGO: sustituye esta cadena vacía por tu enlace real de pago
+// (o tu CLABE) cuando lo tengas. Mientras esté vacía, el asistente muestra el
+// marcador "[ENLACE DE PAGO POR COLOCAR]" al concluir la solicitud.
+const ENLACE_PAGO = "";
 
 const SECCIONES = {
     solicitante: { es: "DATOS DEL SOLICITANTE", en: "APPLICANT DETAILS" },
@@ -67,6 +71,22 @@ function idiomaFlujo() {
 
 function campoPregunta(c, idioma) {
     return idioma === "en" ? (c.preguntaEn || c.pregunta) : c.pregunta;
+}
+
+// Pregunta adaptada al solicitante: pasaporte si es extranjero, RFC si es
+// persona moral, y asterisco en los campos obligatorios de la ficha oficial
+function campoPreguntaActual(c, idioma) {
+    let pregunta = campoPregunta(c, idioma);
+    const sol = flujo && flujo.solicitante;
+    if (c.tipo === "curp" && sol) {
+        if (sol.nacionalidad === "extranjero") {
+            pregunta = t("¿Cuál es el número de tu pasaporte? Escríbelo tal como aparece en el documento.", "What is your passport number? Write it exactly as shown on the document.");
+        } else if (sol.tipo === "moral") {
+            pregunta = t("¿Cuál es su RFC? Son 12 o 13 letras y números. Si aún no tiene RFC, escribe \"no tengo\".", "What is its tax ID (RFC)? If it does not have one yet, write \"no tengo\".");
+        }
+    }
+    if (c.obligatorio) pregunta = "* " + pregunta;
+    return pregunta;
 }
 
 function campoEtiqueta(c, idioma) {
@@ -124,6 +144,8 @@ function elegirVoz(idioma) {
     const delIdioma = vocesDisponibles.filter(v => v.lang && v.lang.toLowerCase().startsWith(esIdioma));
     const lista = delIdioma.length ? delIdioma : vocesDisponibles;
     if (!lista.length) return null;
+    // Neutra: la voz predeterminada del dispositivo, sin buscar género
+    if (perfil.voz === "neutra") return lista[0];
     const masculinos = ["male", "jorge", "carlos", "diego", "juan", "paulo", "rishi", "google español 2"];
     const femeninos = ["female", "sabina", "mónica", "monica", "paulina", "helena", "laura", "google español"];
     const buscados = perfil.voz === "masculina" ? masculinos : femeninos;
@@ -155,9 +177,9 @@ function leerEnVoz(texto, boton) {
     const utterance = new SpeechSynthesisUtterance();
     utterance.text = textoParaVoz(texto, idioma);
     utterance.lang = idioma === "en" ? "en-US" : "es-MX";
-    // Femenina a ritmo natural; masculina algo más lenta por los.pitch bajo
-    utterance.rate = perfil.voz === "masculina" ? 0.92 : 1.05;
-    utterance.pitch = perfil.voz === "masculina" ? 0.7 : 1.15;
+    // Femenina a ritmo natural; masculina algo más lenta por el pitch bajo; neutra sin ajustes
+    utterance.rate = perfil.voz === "masculina" ? 0.92 : perfil.voz === "neutra" ? 1 : 1.05;
+    utterance.pitch = perfil.voz === "masculina" ? 0.7 : perfil.voz === "neutra" ? 1 : 1.15;
     const v = elegirVoz(idioma);
     if (v) utterance.voice = v;
     utterance.onend = () => {
@@ -186,6 +208,154 @@ function buscarSolicitud(folio, curp) {
     return cargarSolicitudes().find(s =>
         normalizar(s.folio) === f && normalizar(s.curp).includes(c) && c.length >= 4
     );
+}
+
+// ---------- Tutorial de bienvenida ----------
+const CLAVE_TUTORIAL = "unaman_tutorial_completado";
+let tutorial = null;   // { paso } durante la bienvenida
+
+const PASOS_TUTORIAL = [
+    {
+        id: "funcion",
+        texto: () => t(
+            "¡Hola! Bienvenido a tu Asistente para Trámites.\n\nMi trabajo es acompañarte en los trámites de la UNAMAN que están disponibles por el momento. Mi objetivo es ahorrarte vueltas, filas y tiempo perdido: te explico cada trámite con la información de su ficha oficial, te ayudo a llenar tu solicitud y te dejo listo para presentarla.\n\nVamos a conocernos con unas preguntas rápidas.",
+            "Hello! Welcome to your Procedures Assistant.\n\nMy job is to guide you through the UNAMAN procedures currently available. My goal is to save you detours, lines and wasted time: I explain each procedure with its official information sheet, help you fill your request and get you ready to submit it.\n\nLet's get acquainted with a few quick questions."
+        ),
+        boton: () => t("➡️ Siguiente", "➡️ Next"),
+        alAceptar: () => pasoTutorial(1)
+    },
+    {
+        id: "cuota",
+        texto: () => t(
+            "Para mantenerme funcionando, mi contribución es de $10 MXN por una interacción, y con eso te apoyo durante 24 horas.\n\nSi estás de acuerdo, al final te proporcionaré un enlace para realizar ese depósito.\n\nAl continuar, aceptas también los términos y condiciones de uso y el manejo confidencial de tus datos personales: todo lo que escribas se queda únicamente en tu dispositivo, nadie más lo ve.",
+            "To keep me running, my support contribution is $10 MXN per interaction, and it includes my assistance for 24 hours.\n\nIf you agree, at the end I will provide a link for that payment.\n\nBy continuing, you also accept the terms and conditions of use and the confidential handling of your personal data: everything you write stays only on your device; nobody else sees it."
+        ),
+        boton: () => t("✅ Estoy de acuerdo", "✅ I agree"),
+        alAceptar: () => pasoTutorial(2)
+    },
+    {
+        id: "voz",
+        texto: () => t(
+            "¿Qué voz prefieres para mí? Puedo sonar femenina, masculina o neutra. La neutra usa la voz predeterminada de tu teléfono, sin buscar ningún género.\n\nNota: las voces dependen de las instaladas en cada dispositivo, así que pruébalas y quédate con la que mejor te suene. Tu asistente aparecerá en la esquina superior izquierda.\n\nTambién dime: ¿en qué idioma quieres que te auxilie? Si eliges inglés, todo te lo explico en inglés, pero la solicitud final se llena en español, lista para presentarse ante la oficina correspondiente.",
+            "Which voice do you prefer for me? I can sound female, male or neutral. The neutral option uses your phone's default voice, without looking for any gender.\n\nNote: the available voices depend on the ones installed on each device, so try them and keep the one that sounds best to you. Your assistant will appear in the upper-left corner.\n\nAlso tell me: which language should I use? If you choose English, I explain everything in English, but the final request form is filled in Spanish, ready to submit at the corresponding office."
+        ),
+        conOpciones: true,
+        boton: () => t("➡️ Siguiente", "➡️ Next"),
+        alAceptar: () => pasoTutorial(3)
+    },
+    {
+        id: "herramientas",
+        texto: () => t(
+            "Conozcamos las herramientas de la pantalla:\n\n🎤 Micrófono — para hablarme en lugar de escribir.\n➤ Enviar — manda tu mensaje.\n🧹 Empezar de nuevo — la brocha limpia la conversación y arrancamos frescos.\n🔊 Voz automática — el interruptor de abajo: si lo enciendes, leo todas mis respuestas en voz alta sin que toques la bocina.\n⚙️ Configuración — el engranaje arriba a la derecha: ahí puedes cambiar tu voz, tu idioma y reiniciar el asistente para volver a ver este tutorial desde el principio.",
+            "Let's look at the tools on the screen:\n\n🎤 Microphone — talk to me instead of typing.\n➤ Send — sends your message.\n🧹 Start over — the brush clears the conversation and we start fresh.\n🔊 Automatic voice — the switch below: if you turn it on, I read all my answers out loud without you tapping the speaker.\n⚙️ Settings — the gear at the top right: there you can change your voice, your language, and restart the assistant to see this tutorial from the beginning."
+        ),
+        boton: () => t("➡️ Siguiente", "➡️ Next"),
+        alAceptar: () => pasoTutorial(4)
+    },
+    {
+        id: "apoyo",
+        texto: () => t(
+            "Durante el trámite te acompaño así:\n\n• Te explico cada trámite con la información de su ficha oficial.\n• Las preguntas que empiezan con asterisco (*) son campos obligatorios de la ficha oficial.\n• Te pregunto si eres persona física o moral, y si eres nacional o extranjero; si eres extranjero, en lugar de tu CURP te pido el número de tu pasaporte.\n\n¿Listo? Empecemos.",
+            "During your procedure I support you like this:\n\n• I explain each procedure with its official information sheet.\n• Questions starting with an asterisk (*) are required fields from the official form.\n• I ask whether you are an individual or a company, and whether you are a national or a foreigner; if you are a foreigner, I ask for your passport number instead of your CURP.\n\nReady? Let's start."
+        ),
+        boton: () => t("🚀 Empezar", "🚀 Start"),
+        alAceptar: () => terminarTutorial()
+    }
+];
+
+function iniciarTutorial() {
+    tutorial = { paso: 0 };
+    document.getElementById("zona-entrada").style.opacity = "0.35";
+    document.getElementById("zona-entrada").style.pointerEvents = "none";
+    pasoTutorial(0);
+}
+
+function pasoTutorial(n) {
+    if (!tutorial) return;
+    tutorial.paso = n;
+    const paso = PASOS_TUTORIAL[n];
+    const div = agregarMensajeConTutor(paso.texto(), paso, !!paso.conOpciones);
+    if (vozAutomatica) leerEnVoz(paso.texto(), null);
+    if (paso.boton) {
+        const cont = div.querySelector(".texto-mensaje");
+        const contBotones = document.createElement("div");
+        contBotones.className = "botones-mensaje";
+        const btn = document.createElement("button");
+        btn.className = "boton-accion primario";
+        btn.textContent = paso.boton();
+        btn.addEventListener("click", () => { div.remove(); paso.alAceptar(); });
+        contBotones.appendChild(btn);
+        cont.appendChild(contBotones);
+    }
+}
+
+function terminarTutorial() {
+    guardarLocal(CLAVE_TUTORIAL, true);
+    tutorial = null;
+    document.getElementById("zona-entrada").style.opacity = "";
+    document.getElementById("zona-entrada").style.pointerEvents = "";
+    decir(t("Perfecto, ya estamos listos. ¿En qué te ayudo hoy?", "Perfect, we are all set. How can I help you today?"));
+}
+
+function agregarMensajeConTutor(texto, paso, conOpciones) {
+    const caja = document.getElementById("cuadro-conversacion");
+    const div = document.createElement("div");
+    div.className = "mensaje asistente tutorial-paso";
+    const cuerpo = escapar(texto).replace(/\n/g, "<br>");
+    div.innerHTML = '<div class="contenido-mensaje"><span class="texto-mensaje">' + cuerpo + '</span></div>';
+    const cont = div.querySelector(".texto-mensaje");
+
+    if (conOpciones) {
+        const fila = document.createElement("div");
+        fila.className = "opciones-tutorial";
+        for (const v of ["femenina", "masculina", "neutra"]) {
+            const btn = document.createElement("button");
+            btn.className = "opcion-voz" + (perfil.voz === v ? " elegida" : "");
+            btn.dataset.voz = v;
+            btn.innerHTML = '<span class="icono">' + AVATARES[v] + '</span><span class="rotulo">' +
+                (v === "femenina" ? t("Femenina", "Female") : v === "masculina" ? t("Masculina", "Male") : t("Neutra", "Neutral")) + '</span>';
+            btn.addEventListener("click", () => {
+                perfil.voz = v;
+                fila.querySelectorAll(".opcion-voz").forEach(b => b.classList.toggle("elegida", b === btn));
+                actualizarAvatar();
+                guardarLocal(CLAVE_PERFIL, perfil);
+                leerEnVoz(perfil.idioma === "en" ? "This is how I sound." : "Así sueno yo.", null);
+            });
+            fila.appendChild(btn);
+        }
+        const filaIdioma = document.createElement("div");
+        filaIdioma.className = "opciones-tutorial";
+        for (const idioma of ["es", "en"]) {
+            const btn = document.createElement("button");
+            btn.className = "opcion-idioma" + (perfil.idioma === idioma ? " elegida" : "");
+            btn.dataset.idioma = idioma;
+            btn.innerHTML = '<span class="icono">' + (idioma === "es" ? "🇲🇽" : "🇺🇸") + '</span><span class="rotulo">' +
+                (idioma === "es" ? "Español" : "English") + '</span>';
+            btn.addEventListener("click", () => {
+                perfil.idioma = idioma;
+                filaIdioma.querySelectorAll(".opcion-idioma").forEach(b => b.classList.toggle("elegida", b === btn));
+                guardarLocal(CLAVE_PERFIL, perfil);
+                actualizarIdiomaMicrofono();
+                actualizarPlaceholder();
+            });
+            filaIdioma.appendChild(btn);
+        }
+        cont.appendChild(fila);
+        cont.appendChild(filaIdioma);
+    }
+
+    caja.appendChild(div);
+    caja.scrollTop = caja.scrollHeight;
+    return div;
+}
+
+// ---------- Avatar ----------
+const AVATARES = { femenina: "👩", masculina: "👨‍🦲", neutra: "🧑" };
+
+function actualizarAvatar() {
+    const cont = document.getElementById("avatar-asistente");
+    if (!cont) return;
+    cont.textContent = perfil.voz ? (AVATARES[perfil.voz] || "🧑") : "🧑";
 }
 
 // ---------- Chat: render ----------
@@ -413,15 +583,51 @@ function terminarEnLinea() {
 function empezarLlenado() {
     const idioma = idiomaFlujo();
     const tr = flujo.tramite;
-    flujo.paso = "llenado";
+    flujo.paso = "llenado-perfil-tipo";
     flujo.indice = 0;
+    flujo.solicitante = { tipo: null, nacionalidad: null };
     let texto = t(
         "Llenaré la solicitud en el formato oficial \"" + tr.clave + "\". Te haré unas preguntas, una por una, en español; la solicitud final queda en español para presentarla en la oficina correspondiente.\n\n",
         "I will fill the request in the official form \"" + tr.clave + "\". I will ask a few questions, one at a time, in English so you can understand everything; the final form is written in Spanish to submit it at the corresponding office.\n\n"
     );
+    texto += t("Las preguntas que empiezan con asterisco (*) son campos obligatorios de la ficha oficial. ", "Questions starting with an asterisk (*) are required fields from the official form. ");
     texto += t("Puedes escribir \"corregir\" para volver a la pregunta anterior.", "You can type \"corregir\" to go back to the previous question.");
     decir(texto);
-    decir(campoPregunta(tr.campos[0], idioma));
+    decir(t("Antes de empezar: ¿eres persona física (una persona) o persona moral (una empresa u organización)?",
+            "First: are you an individual (a person) or a company/organization?"), [
+        { etiqueta: t("👤 Persona física", "👤 Individual"), accion: () => responderPerfilSolicitante("fisica") },
+        { etiqueta: t("🏢 Persona moral (empresa u organización)", "🏢 Company/organization"), accion: () => responderPerfilSolicitante("moral") }
+    ]);
+}
+
+function responderPerfilSolicitante(tipo) {
+    flujo.solicitante.tipo = tipo;
+    flujo.paso = "llenado-perfil-nacionalidad";
+    decir(t("¿Eres nacional (mexicano) o extranjero?", "Are you a Mexican national or a foreigner?"), [
+        { etiqueta: t("🇲🇽 Nacional", "🇲🇽 National"), accion: () => responderNacionalidad("nacional") },
+        { etiqueta: t("🌍 Extranjero", "🌍 Foreigner"), accion: () => responderNacionalidad("extranjero") }
+    ]);
+}
+
+function responderNacionalidad(nacionalidad) {
+    flujo.solicitante.nacionalidad = nacionalidad;
+    flujo.paso = "llenado";
+    flujo.indice = 0;
+    decir(campoPreguntaActual(flujo.tramite.campos[0], idiomaFlujo()));
+}
+
+function procesarPerfilSolicitante(texto) {
+    const n = normalizar(texto);
+    if (/(moral|empresa|organizacion|compania|company)/.test(n)) { responderPerfilSolicitante("moral"); return; }
+    if (/(fisica|persona|individual)/.test(n)) { responderPerfilSolicitante("fisica"); return; }
+    decir(t("Por favor elige una opción: persona física o persona moral (empresa).", "Please choose one: individual or company."));
+}
+
+function procesarNacionalidad(texto) {
+    const n = normalizar(texto);
+    if (/(extranjero|foreign|otro pais)/.test(n)) { responderNacionalidad("extranjero"); return; }
+    if (/(nacional|mexicano|mexicana|national)/.test(n)) { responderNacionalidad("nacional"); return; }
+    decir(t("Por favor elige una opción: nacional o extranjero.", "Please choose one: national or foreigner."));
 }
 
 function procesarRespuestaLlenado(texto) {
@@ -431,18 +637,18 @@ function procesarRespuestaLlenado(texto) {
 
     if (normalizar(texto).match(/(corregir|correct|go back|atras)/)) {
         if (flujo.indice === 0) {
-            decir(campoPregunta(campo, idioma));
+            decir(campoPreguntaActual(campo, idioma));
         } else {
             flujo.indice--;
             delete flujo.datos[tr.campos[flujo.indice].id];
-            decir(campoPregunta(tr.campos[flujo.indice], idioma));
+            decir(campoPreguntaActual(tr.campos[flujo.indice], idioma));
         }
         return;
     }
 
-    const error = validarCampo(campo, texto, idioma);
+    const error = validarCampo(campo, texto, idioma, flujo.solicitante);
     if (error) {
-        decir(error + "\n\n" + campoPregunta(campo, idioma));
+        decir(error + "\n\n" + campoPreguntaActual(campo, idioma));
         return;
     }
 
@@ -451,7 +657,7 @@ function procesarRespuestaLlenado(texto) {
 
     if (flujo.indice < tr.campos.length) {
         const siguiente = tr.campos[flujo.indice];
-        let msg = campoPregunta(siguiente, idioma);
+        let msg = campoPreguntaActual(siguiente, idioma);
         if (idioma !== "en" && siguiente.ayuda) msg += "\n\n" + siguiente.ayuda;
         decir(msg);
     } else if (tr.dictado) {
@@ -515,7 +721,7 @@ function procesarDictado(texto) {
     }
 }
 
-function validarCampo(campo, valor, idioma) {
+function validarCampo(campo, valor, idioma, solicitante) {
     const v = valor.trim();
     const es = idioma !== "en";
     if (campo.obligatorio && !v) {
@@ -523,6 +729,9 @@ function validarCampo(campo, valor, idioma) {
     }
     if (!v) return null;
     if (campo.tipo === "curp") {
+        // Extranjero: se pide pasaporte en lugar de CURP, sin validación de CURP
+        if (solicitante && solicitante.nacionalidad === "extranjero") return null;
+        if (solicitante && solicitante.tipo === "moral" && /^(no tengo|no tiene)$/.test(normalizar(v))) return null;
         const curp = v.toUpperCase();
         if (!/^[A-Z][AEIOU][A-Z]{2}\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[HM][A-Z]{2}[B-DF-HJ-NP-TV-Z]{3}[0-9A-Z]\d$/.test(curp)) {
             return es
@@ -544,6 +753,27 @@ function validarCampo(campo, valor, idioma) {
         return es ? "Escribe solo el número, por favor." : "Please write only the number.";
     }
     return null;
+}
+
+// ---------- Pago: paso entre la hoja completa y el PDF ----------
+function mensajePago(solicitud, continuar) {
+    const tieneEnlace = ENLACE_PAGO && ENLACE_PAGO.length > 0;
+    const enlace = tieneEnlace
+        ? '<a href="' + escapar(ENLACE_PAGO) + '" target="_blank" rel="noopener" style="color:var(--mar-claro); font-weight:700;">' + t("Realizar el depósito de $10 MXN", "Make the $10 MXN payment") + '</a>'
+        : '<strong style="color:#b45309;">' + t("[ENLACE DE PAGO POR COLOCAR — $10 MXN]", "[PAYMENT LINK TO BE ADDED — $10 MXN]") + '</strong>';
+    const texto = t(
+        "Tu contribución de apoyo es de $10 MXN por esta interacción, con mi acompañamiento durante 24 horas.\n\nSi estás de acuerdo, realiza el depósito aquí:\n\n",
+        "Your support contribution is $10 MXN for this interaction, with my support for 24 hours.\n\nIf you agree, make the payment here:\n\n"
+    ) + enlace + "\n\n" + t("Cuando termines, toca el botón de abajo para descargar tu solicitud.", "When you are done, tap the button below to download your request.");
+    agregarMensaje(texto, "asistente", [
+        { etiqueta: t("🖨️ Continuar: descargar solicitud en formato oficial (PDF)", "🖨️ Continue: download official request form (PDF)"), accion: continuar, estilo: "primario" },
+        { etiqueta: t("📄 Ver qué más llevar en mi carpeta", "📄 See what else to bring"), accion: () => decirCarpeta(flujoTramiteDe(solicitud), solicitud.idiomaAuxiliar || "es") }
+    ]);
+    if (vozAutomatica) leerEnVoz(texto.replace(/<[^>]+>/g, ""), null);
+}
+
+function flujoTramiteDe(solicitud) {
+    return TRAMITES.find(x => x.id === solicitud.tramiteId) || null;
 }
 
 function concluirSolicitud() {
@@ -574,14 +804,13 @@ function concluirSolicitud() {
     resumen += "📄 " + tramiteNombre(tr, idioma) + " (" + tr.clave + ")\n";
     resumen += t("🔖 Folio de seguimiento: ", "🔖 Reference number: ") + solicitud.folio + "\n\n";
     resumen += t(
-        "Tu hoja de solicitud, en el formato oficial y en español, está lista para descargar e imprimir. Preséntala en la oficina correspondiente con tu carpeta de documentos.",
-        "Your request sheet, in the official form and in Spanish, is ready to download and print. Submit it at the corresponding office with your document folder."
+        "Tu hoja de solicitud, en el formato oficial y en español, está lista. Preséntala en la oficina correspondiente con tu carpeta de documentos.",
+        "Your request sheet, in the official form and in Spanish, is ready. Submit it at the corresponding office with your document folder."
     );
 
     flujo = null;
     decir(resumen, [
-        { etiqueta: t("🖨️ Descargar solicitud en formato oficial (PDF)", "🖨️ Download official request form (PDF)"), accion: () => generarPDF(solicitud), estilo: "primario" },
-        { etiqueta: t("📄 Ver qué más llevar en mi carpeta", "📄 See what else to bring"), accion: () => decirCarpeta(tr, idioma) },
+        { etiqueta: t("💳 Continuar", "💳 Continue"), accion: () => mensajePago(solicitud, () => generarPDF(solicitud)), estilo: "primario" },
         { etiqueta: t("🔎 Ver el estatus de mi solicitud", "🔎 Check my request status"), accion: () => iniciarConsultaEstatus() }
     ]);
 }
@@ -798,6 +1027,8 @@ function procesarMensaje(texto) {
         if (/(imprimir|papel|llenar|presencial|oficina|print|form)/.test(n)) { empezarLlenado(); return; }
     }
     if (flujo && flujo.paso === "llenado") { procesarRespuestaLlenado(texto); return; }
+    if (flujo && flujo.paso === "llenado-perfil-tipo") { procesarPerfilSolicitante(texto); return; }
+    if (flujo && flujo.paso === "llenado-perfil-nacionalidad") { procesarNacionalidad(texto); return; }
     if (flujo && flujo.paso === "dictado") { procesarDictado(texto); return; }
     if (flujo && flujo.paso === "consultar-folio") { procesarConsultaFolio(texto); return; }
     if (flujo && flujo.paso === "consultar-curp") { procesarConsultaCurp(texto); return; }
@@ -963,6 +1194,7 @@ function abrirModalConfig(primeraVez) {
     modal.classList.add("visible");
     document.getElementById("boton-cerrar-config").style.display = primeraVez ? "none" : "inline-block";
     document.getElementById("fila-borrar").style.display = primeraVez ? "none" : "block";
+    document.getElementById("fila-reiniciar").style.display = primeraVez ? "none" : "block";
     actualizarEleccionVoz();
     actualizarEleccionIdioma();
     actualizarBotonGuardar();
@@ -1034,6 +1266,31 @@ function limpiarConversacion() {
     ));
 }
 
+// Reinicio total: borra todo y vuelve a mostrar el tutorial desde el paso 1
+function reiniciarAsistente() {
+    const en = perfil.idioma === "en";
+    const msg = en
+        ? "This will erase ALL your data on this device (requests, settings and tutorial) and take you back to the welcome tutorial. Continue?"
+        : "Esto borrará TODOS tus datos en este dispositivo (solicitudes, configuración y tutorial) y volverá al tutorial de bienvenida desde el paso 1. ¿Continuar?";
+    if (!confirm(msg)) return;
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    localStorage.removeItem(CLAVE_SOLICITUDES);
+    localStorage.removeItem(CLAVE_PERFIL);
+    localStorage.removeItem(CLAVE_TUTORIAL);
+    localStorage.removeItem(CLAVE_PRIMER_USO);
+    perfil = { voz: null, idioma: "es" };
+    flujo = null;
+    tutorial = null;
+    vozAutomatica = false;
+    document.getElementById("interruptor-voz").setAttribute("aria-checked", "false");
+    document.getElementById("modal-config").classList.remove("visible");
+    document.getElementById("cuadro-conversacion").innerHTML = "";
+    actualizarAvatar();
+    actualizarIdiomaMicrofono();
+    actualizarPlaceholder();
+    abrirModalPrivacidadIdioma();
+}
+
 // ---------- Privacidad ----------
 function abrirModalPrivacidadIdioma() {
     const es = perfil.idioma !== "en";
@@ -1065,6 +1322,7 @@ function iniciar() {
     actualizarPlaceholder();
     actualizarIdiomaMicrofono();
     configurarMicrofono();
+    actualizarAvatar();
 
     document.getElementById("boton-enviar").addEventListener("click", enviarMensaje);
     document.getElementById("texto-usuario").addEventListener("keydown", e => {
@@ -1092,8 +1350,9 @@ function iniciar() {
     document.getElementById("boton-aceptar-privacidad").addEventListener("click", () => {
         localStorage.setItem(CLAVE_PRIMER_USO, "si");
         document.getElementById("modal-privacidad").classList.remove("visible");
-        abrirModalConfig(true);
+        iniciarTutorial();
     });
+    document.getElementById("boton-reiniciar").addEventListener("click", reiniciarAsistente);
     document.getElementById("boton-guardar-config").addEventListener("click", () => guardarConfiguracion(false));
     document.getElementById("boton-cerrar-config").addEventListener("click", () => {
         document.getElementById("modal-config").classList.remove("visible");
@@ -1106,6 +1365,7 @@ function iniciar() {
             perfil.voz = btn.dataset.voz;
             actualizarEleccionVoz();
             actualizarBotonGuardar();
+            actualizarAvatar();
             leerEnVoz(perfil.idioma === "en"
                 ? "This is how my voice sounds."
                 : "Así suena mi voz.", null);
@@ -1122,6 +1382,9 @@ function iniciar() {
 
     if (!acepto) {
         abrirModalPrivacidadIdioma();
+    } else if (!leerLocal(CLAVE_TUTORIAL, false)) {
+        // Ya aceptó privacidad antes de existir el tutorial: lo vemos una vez
+        iniciarTutorial();
     } else {
         decirSaludo();
     }
