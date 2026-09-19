@@ -1112,7 +1112,6 @@ function listarSolicitudesLocales() {
 }
 
 function mostrarEstatus(s) {
-    const tr = flujoTramiteDe(s);
     let html = escapar("📄 " + s.folio + " — " + s.tramiteNombre + "\n");
     html += escapar("📅 " + t("Creada", "Created") + ": " + formatearFecha(s.fecha, perfil.idioma) + "\n");
     if (s.recordatorio) {
@@ -1432,23 +1431,41 @@ function reiniciarAsistente() {
 
 // ---------- Privacidad ----------
 function abrirModalPrivacidadIdioma() {
+    renderizarContenidoPrivacidad();
+    actualizarSelectorIdiomaPrivacidad();
+    document.getElementById("modal-privacidad").classList.add("visible");
+}
+
+function renderizarContenidoPrivacidad() {
     const es = perfil.idioma !== "en";
     document.getElementById("titulo-privacidad").textContent = es ? "🔒 Aviso de Privacidad" : "🔒 Privacy Notice";
+    document.getElementById("subtitulo-privacidad").textContent = es
+        ? "Elige tu idioma · Choose your language"
+        : "Choose your language · Elige tu idioma";
     document.getElementById("cuerpo-privacidad").innerHTML = es
 ? `<p><strong>Este sitio es un asistente de apoyo independiente.</strong> No está afiliado a ningún ente de gobierno; es una herramienta privada que te orienta y te ayuda a preparar tus documentos. Los trámites se concluyen únicamente en las oficinas o sitios oficiales correspondientes.</p>
 <p><strong>Qué datos se piden:</strong> solo los que tú decidas escribir para llenar tu solicitud (nombre, CURP, domicilio, teléfono, etc.).</p>
-<p><strong>Para qué se usan:</strong> únicamente para llenar tu hoja de solicitud y tu folio de seguimiento.</p>
+<p><strong>Para qué se usan:</strong> únicamente para llenar tu hoja de solicitud y tu número de referencia.</p>
 <p><strong>Quién los ve:</strong> <strong>nadie más que tú.</strong> Toda la información se guarda solamente en tu propio dispositivo (navegador). No se envía a ningún servidor ni se comparte con nadie.</p>
 <p><strong>Cómo borrarlos:</strong> desde el botón de configuración ⚙️ ("Borrar mis datos") o limpiando el historial de tu navegador.</p>
+<p><strong>Costo:</strong> este asistente es gratuito. Si te sirve, al final puedes apoyar el proyecto con una donación voluntaria, 100% opcional.</p>
 <p>Al continuar, aceptas este manejo de tus datos personales.</p>`
 : `<p><strong>This site is an independent support assistant.</strong> It is not affiliated with any government entity; it is a private tool that guides you and helps you prepare your documents. Procedures are completed only at the corresponding official offices or sites.</p>
 <p><strong>What data is asked:</strong> only what you choose to type to fill your request form (name, ID code, address, phone, etc.).</p>
-<p><strong>What it is used for:</strong> only to fill your request sheet and your tracking number.</p>
+<p><strong>What it is used for:</strong> only to fill your request sheet and your reference number.</p>
 <p><strong>Who sees it:</strong> <strong>nobody but you.</strong> All information is stored only on your own device (browser). It is not sent to any server nor shared with anyone.</p>
 <p><strong>How to delete it:</strong> from the settings button ⚙️ ("Borrar mis datos") or by clearing your browser history.</p>
+<p><strong>Cost:</strong> this assistant is free. If it helps you, at the end you can support the project with a voluntary donation, 100% optional.</p>
 <p>By continuing, you accept this handling of your personal data.</p>`;
-    document.getElementById("boton-aceptar-privacidad").textContent = es ? "Acepto — quiero usar el asistente" : "I accept — let me use the assistant";
-    document.getElementById("modal-privacidad").classList.add("visible");
+    document.getElementById("boton-aceptar-privacidad").textContent = es
+        ? "Acepto — quiero usar el asistente"
+        : "I accept — let me use the assistant";
+}
+
+function actualizarSelectorIdiomaPrivacidad() {
+    document.querySelectorAll("#selector-idioma-privacidad .opcion-idioma").forEach(btn => {
+        btn.classList.toggle("elegida", perfil.idioma === btn.dataset.idioma);
+    });
 }
 
 // ---------- Inicio ----------
@@ -1519,6 +1536,20 @@ function iniciar() {
             perfil.idioma = btn.dataset.idioma;
             actualizarEleccionIdioma();
             actualizarBotonGuardar();
+        });
+    });
+
+    // Selector de idioma dentro del modal de privacidad
+    document.querySelectorAll("#selector-idioma-privacidad .opcion-idioma").forEach(btn => {
+        btn.addEventListener("click", () => {
+            perfil.idioma = btn.dataset.idioma;
+            guardarLocal(CLAVE_PERFIL, perfil);
+            document.documentElement.lang = perfil.idioma === "en" ? "en" : "es";
+            actualizarSelectorIdiomaPrivacidad();
+            renderizarContenidoPrivacidad();
+            actualizarPlaceholder();
+            actualizarIdiomaMicrofono();
+            actualizarAvatar();
         });
     });
 
