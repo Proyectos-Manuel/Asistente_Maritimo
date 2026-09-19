@@ -16,10 +16,28 @@ let modoEnLinea = false;
 const CLAVE_PRIMER_USO = "unaman_privacidad_aceptada";
 const CLAVE_PERFIL = "unaman_perfil";
 const CLAVE_SOLICITUDES = "unaman_solicitudes";
-// ⚠️ MARCADOR DE PAGO: sustituye esta cadena vacía por tu enlace real de pago
-// (o tu CLABE) cuando lo tengas. Mientras esté vacía, el asistente muestra el
-// marcador "[ENLACE DE PAGO POR COLOCAR]" al concluir la solicitud.
-const ENLACE_PAGO = "";
+const CLAVE_USUARIO = "unaman_usuario";
+
+// 💛 ENLACE DE APOYO VOLUNTARIO
+const ENLACE_APOYO = "http://link.mercadopago.com.mx/asistentetramites";
+
+// ---------- Usuario (preparado para el futuro "Premium") ----------
+// Hoy siempre es "anónimo". Se llenará cuando añadamos login más adelante.
+let usuario = leerLocal(CLAVE_USUARIO, { tipo: "anónimo", id: null, expira: null, primerUso: null });
+
+// Marca la fecha del primer uso (servirá para dar acceso fundador gratis)
+if (!usuario.primerUso) {
+    usuario.primerUso = new Date().toISOString().slice(0, 10);
+    guardarLocal(CLAVE_USUARIO, usuario);
+}
+
+// Devuelve true solo si el usuario es premium y no ha expirado.
+// Hoy siempre devuelve false; la lógica real se activará al añadir el premium.
+function esPremium() {
+    if (usuario.tipo !== "premium") return false;
+    if (usuario.expira && new Date(usuario.expira) < new Date()) return false;
+    return true;
+}
 
 const SECCIONES = {
     solicitante: { es: "DATOS DEL SOLICITANTE", en: "APPLICANT DETAILS" },
@@ -48,9 +66,9 @@ function formatearFecha(iso, idioma) {
 }
 
 function generarFolio() {
-    const anio = new Date().getFullYear();
-    const azar = Math.floor(1000 + Math.random() * 9000);
-    return "UN-" + anio + "-" + azar;
+    // Número de referencia PERSONAL del asistente. No es oficial.
+    // Sirve solo para que el usuario identifique su solicitud guardada.
+    return "R-" + Math.floor(1000 + Math.random() * 9000);
 }
 
 function guardarLocal(clave, valor) {
@@ -109,13 +127,14 @@ function categoriaNombre(cat, idioma) {
 }
 
 // ---------- Voz ----------
+// Solo reemplaza siglas exactas, en MAYÚSCULAS, para no confundir palabras comunes.
+// Ejemplo: "VINE" o "DEFINE" no deben convertirse en "VENE" o "DEFENE".
 const PRONUNCIACION = [
-    { ver: /CURP/gi, decir: "curpe" },
-    { ver: /RFC/gi, decir: "erre efe ce" },
-    { ver: /INE/gi, decir: "ene" },
-    { ver: /STCW/gi, decir: "este ce doble uve" },
-    { ver: /ISPS/gi, decir: "i ese pe ese" },
-    { ver: /PDF/gi, decir: "pede efe" }
+    { ver: /\bCURP\b/g, decir: "curpe" },
+    { ver: /\bRFC\b/g, decir: "erre efe ce" },
+    { ver: /\bINE\b/g, decir: "ene" },
+    { ver: /\bSTCW\b/g, decir: "este ce doble uve" },
+    { ver: /\bISPS\b/g, decir: "i ese pe ese" }
 ];
 
 function textoParaVoz(texto, idioma) {
@@ -226,10 +245,10 @@ const PASOS_TUTORIAL = [
     {
         id: "cuota",
         texto: () => t(
-            "Para mantenerme funcionando, mi contribución es de 10 pesos mexicanos por una interacción, y con eso te apoyo durante 24 horas.\n\nSi estás de acuerdo, al final te proporcionaré un enlace para realizar ese depósito.\n\nAl continuar, aceptas también los términos y condiciones de uso y el manejo confidencial de tus datos personales: todo lo que escribas se queda únicamente en tu dispositivo, nadie más lo ve.",
-            "To keep me running, my support contribution is 10 Mexican pesos per interaction, and it includes my assistance for 24 hours.\n\nIf you agree, at the end I will provide a link for that payment.\n\nBy continuing, you also accept the terms and conditions of use and the confidential handling of your personal data: everything you write stays only on your device; nobody else sees it."
+            "Este asistente es gratuito en su función principal, y seguirá siéndolo.\n\nAl final, si te sirvió, puedes apoyar el proyecto con una donación voluntaria. Es 100% opcional; la app funciona completa sin necesidad de donar.\n\nAl continuar, aceptas también los términos y condiciones de uso y el manejo confidencial de tus datos personales: todo lo que escribas se queda únicamente en tu dispositivo, nadie más lo ve.",
+            "This assistant is free in its main function, and it will remain so.\n\nAt the end, if it helped you, you can support the project with a voluntary donation. It is 100% optional; the app works fully without donating.\n\nBy continuing, you also accept the terms and conditions of use and the confidential handling of your personal data: everything you write stays only on your device; nobody else sees it."
         ),
-        boton: () => t("✅ Estoy de acuerdo", "✅ I agree"),
+        boton: () => t("✅ Entendido", "✅ Got it"),
         alAceptar: () => pasoTutorial(2)
     },
     {
@@ -399,8 +418,10 @@ function agregarMensaje(texto, quien, botones, opcionesExtra) {
                 btn.className = "boton-accion" + (b.estilo ? " " + b.estilo : "");
                 btn.textContent = b.etiqueta;
                 btn.addEventListener("click", () => {
-                    // Al elegir una opción, la pregunta desaparece: chat limpio
-                    div.remove();
+                    // Los botones "persistentes" no se borran: el usuario puede volver a elegir
+                    if (!b.persistente) {
+                        div.remove();
+                    }
                     b.accion();
                 });
                 cont.appendChild(btn);
@@ -408,12 +429,51 @@ function agregarMensaje(texto, quien, botones, opcionesExtra) {
             div.querySelector(".texto-mensaje").appendChild(cont);
         }
     } else {
-        div.innerHTML = `<div class="texto-mensaje">${cuerpo}</div>`;
+        div.innerHTML = `
+            <div class="texto-mensaje">
+                <span class="texto-cuerpo">${cuerpo}</span>
+                <button class="boton-editar" title="${t('Corregir este mensaje', 'Edit this message')}" aria-label="${t('Corregir este mensaje', 'Edit this message')}">✏️</button>
+            </div>
+        `;
+        const contexto = opciones.contexto || null;
+        const btnEditar = div.querySelector(".boton-editar");
+        btnEditar.addEventListener("click", () => {
+            const campo = document.getElementById("texto-usuario");
+            campo.value = texto;
+            div.remove();
+            restaurarContextoFlujo(contexto);
+            campo.focus();
+        });
     }
 
     caja.appendChild(div);
     caja.scrollTop = caja.scrollHeight;
     return div;
+}
+
+// Restaura el flujo al punto exacto donde estaba cuando el usuario envió ese mensaje.
+// Si no hay contexto (o el flujo ya cambió), simplemente no hace nada y deja que
+// procesarMensaje trate el texto como nuevo.
+function restaurarContextoFlujo(contexto) {
+    if (!contexto || !flujo) return;
+    // Solo si seguimos en el mismo trámite
+    const mismoTramite = flujo.tramite && flujo.tramite.id === contexto.tramiteId;
+    if (!mismoTramite) return;
+
+    if (contexto.paso === "llenado" && typeof contexto.indice === "number") {
+        // Regresamos al campo exacto que el usuario está corrigiendo
+        flujo.paso = "llenado";
+        flujo.indice = contexto.indice;
+        const campo = flujo.tramite.campos[contexto.indice];
+        if (campo) delete flujo.datos[campo.id];
+    } else if (contexto.paso === "dictado" && typeof contexto.seccionDictado === "number") {
+        flujo.paso = "dictado";
+        flujo.seccionDictado = contexto.seccionDictado;
+        flujo.borradorDictado = "";
+    } else if (contexto.paso) {
+        // Otros pasos: solo restauramos el nombre del paso
+        flujo.paso = contexto.paso;
+    }
 }
 
 function pensarYResponder(fn, ms) {
@@ -440,7 +500,7 @@ function actualizarPlaceholder() {
 function botonesFijos() {
     return [
         { etiqueta: t("📋 Ver trámites de la UNAMAN", "📋 UNAMAN procedures"), accion: () => { const x = flujo; flujo = null; menuTramites(); flujo = x; } },
-        { etiqueta: t("🔎 Mi solicitud", "🔎 My request"), accion: () => iniciarConsultaEstatus() }
+        { etiqueta: t("📋 Mis solicitudes guardadas", "📋 My saved requests"), accion: () => listarSolicitudesLocales() }
     ];
 }
 
@@ -554,10 +614,12 @@ function elegirTramite(tramite, respuestasRuta) {
         );
     }
     const botones = [];
+    // Opción primaria: llenar la solicitud para imprimir (flujo principal)
+    botones.push({ etiqueta: t("🖨️ Llenar la solicitud para imprimir", "🖨️ Fill out the request form to print"), accion: () => empezarLlenado(), estilo: "primario" });
+    // Opción secundaria: hacerlo en línea (solo si aplica)
     if (tramite.enLinea) {
-        botones.push({ etiqueta: t("🌐 Hacerlo en línea", "🌐 Do it online"), accion: () => empezarEnLinea(), estilo: "primario" });
+        botones.push({ etiqueta: t("🌐 Hacerlo en línea", "🌐 Do it online"), accion: () => empezarEnLinea() });
     }
-    botones.push({ etiqueta: t("🖨️ Llenar la solicitud para imprimir", "🖨️ Fill out the request form to print"), accion: () => empezarLlenado(), estilo: tramite.enLinea ? "" : "primario" });
     decir(texto, botones);
 }
 
@@ -580,14 +642,30 @@ function empezarEnLinea() {
 
 function abrirPortal() {
     const idioma = idiomaFlujo();
-    window.open(tr.portal || "https://www.gob.mx/semar/unaman", "_blank", "noopener");
-    decir(
-        t(
-            "Abrí el sitio oficial.\n\nRecuerda: soy solo tu guía de apoyo; el trámite se concluye en el sitio oficial correspondiente. Si tienes dudas en el camino, escríbeme y te explico. Al terminar puedes consultar el estatus con tu folio en \"Mi solicitud\".",
-            "I opened the official site.\n\nRemember: I am only your support guide; the procedure is completed on the corresponding official site. If you have questions along the way, write to me and I will explain. When you finish, you can check the status with your reference number under \"My request\"."
-        ),
-        [{ etiqueta: t("✅ Ya terminé mi trámite en línea", "✅ I finished my online procedure"), accion: () => terminarEnLinea() }]
-    );
+    const url = (flujo && flujo.tramite && flujo.tramite.portal) || "https://www.gob.mx/semar/unaman";
+    // Intentar abrir en nueva pestaña
+    const ventana = window.open(url, "_blank", "noopener");
+    if (!ventana || ventana.closed || typeof ventana.closed === "undefined") {
+        // Pop-up bloqueado: mostrar el enlace para que lo abra manualmente
+        decir(t(
+            "⚠️ Tu navegador bloqueó la ventana emergente.\n\n" +
+            "Copia y pega este enlace en tu navegador para abrir el sitio oficial:\n\n" +
+            url,
+            "⚠️ Your browser blocked the pop-up.\n\n" +
+            "Copy and paste this link into your browser to open the official site:\n\n" +
+            url
+        ), [
+            { etiqueta: t("✅ Ya lo abrí", "✅ I opened it"), accion: () => terminarEnLinea() }
+        ]);
+    } else {
+        decir(
+            t(
+                "Abrí el sitio oficial.\n\nRecuerda: soy solo tu guía de apoyo; el trámite se concluye en el sitio oficial correspondiente. Si tienes dudas en el camino, escríbeme y te explico.",
+                "I opened the official site.\n\nRemember: I am only your support guide; the procedure is completed on the corresponding official site. If you have questions along the way, write to me and I will explain."
+            ),
+            [{ etiqueta: t("✅ Ya terminé mi trámite en línea", "✅ I finished my online procedure"), accion: () => terminarEnLinea() }]
+        );
+    }
 }
 
 function terminarEnLinea() {
@@ -697,46 +775,49 @@ function iniciarDictado() {
     flujo.dictadoTexto = {};
     flujo.borradorDictado = "";
     decir(t(
-        "Perfecto. Ahora viene la parte más importante: tu relato.\n\nTe guiaré sección por sección. Puedes hablar o escribir con calma, sin limite de palabras, y en varios mensajes si lo necesitas.",
-        "Perfect. Now comes the most important part: your account.\n\nI'll guide you section by section. Speak or write calmly, with no word limit, in as many messages as you need."
+        "Perfecto. Ahora viene la parte más importante: tu relato.\n\nTe guiaré sección por sección. Puedes hablar o escribir con calma, sin límite de palabras, y en varios mensajes si lo necesitas.\n\nCuando termines cada sección, toca el botón \"✅ Ya terminé esta sección\".",
+        "Perfect. Now comes the most important part: your account.\n\nI'll guide you section by section. Speak or write calmly, with no word limit, in as many messages as you need.\n\nWhen you finish each section, tap the button \"✅ I finished this section\"."
     ));
     const sec = tr.seccionesDictado[0];
     decir(idioma === "en" ? sec.introduccionEn : sec.introduccion);
+    mostrarBotonesDictado();
+}
+
+function mostrarBotonesDictado() {
+    const idioma = idiomaFlujo();
+    const total = flujo.tramite.seccionesDictado.length;
+    const actual = flujo.seccionDictado + 1;
+    const titulo = t(
+        "📝 Sección " + actual + " de " + total + ". Cuando termines, toca el botón.",
+        "📝 Section " + actual + " of " + total + ". When you finish, tap the button."
+    );
+    decir(titulo, [
+        { etiqueta: t("✅ Ya terminé esta sección", "✅ I finished this section"), accion: () => cerrarSeccionDictado(), estilo: "primario", persistente: true }
+    ]);
 }
 
 function procesarDictado(texto) {
-    const idioma = idiomaFlujo();
-    const tr = flujo.tramite;
-    const secciones = tr.seccionesDictado;
-    const n = normalizar(texto);
-    const esFin = /^(termin[eé]|termine|ya termine|listo|eso es todo|nada mas|done|finished|thats all|that s all)(\s|$)/.test(n);
-    const esCorregir = /^(corregir|repetir|correct|go back|atras)/.test(n);
-
-    if (esCorregir && !esFin) {
-        // Reinicia la sección actual para volver a dictarla
-        flujo.borradorDictado = "";
-        const sec = secciones[flujo.seccionDictado];
-        decir(t("Va, empezamos de nuevo esta parte.", "Sure, let's start this section over.") + "\n\n" + (idioma === "en" ? sec.introduccionEn : sec.introduccion));
-        return;
-    }
-
+    // En el nuevo modelo, todo lo que el usuario escriba se acumula en el borrador.
+    // La sección se cierra solo cuando el usuario toca el botón "Ya terminé esta sección".
     flujo.borradorDictado = (flujo.borradorDictado ? flujo.borradorDictado + " " : "") + texto.trim();
+    // Confirmación breve para que sepa que lo escuchamos
+    decir(t("📝 Anotado. Puedes seguir escribiendo o hablar, y tocar \"✅ Ya terminé esta sección\" cuando acabes esta parte.",
+            "📝 Noted. You can keep typing or speaking, and tap \"✅ I finished this section\" when you finish this part."));
+}
 
-    if (!esFin) {
-        decir(t("Anotado. Sigue con calma, o escribe \"terminé\" si ya acabaste esta parte.",
-                "Noted. Continue at your own pace, or write \"terminé\" (done) if you finished this part."));
-        return;
-    }
-
-    // Cierra la sección actual
+function cerrarSeccionDictado() {
+    const idioma = idiomaFlujo();
+    const secciones = flujo.tramite.seccionesDictado;
     const sec = secciones[flujo.seccionDictado];
-    flujo.dictadoTexto[sec.id] = flujo.borradorDictado;
+    // Si el usuario no escribió nada, al menos guardamos un texto vacío para no bloquear
+    flujo.dictadoTexto[sec.id] = flujo.borradorDictado || "";
     flujo.borradorDictado = "";
     flujo.seccionDictado++;
 
     if (flujo.seccionDictado < secciones.length) {
         const siguiente = secciones[flujo.seccionDictado];
         decir(idioma === "en" ? siguiente.introduccionEn : siguiente.introduccion);
+        mostrarBotonesDictado();
     } else {
         concluirSolicitud();
     }
@@ -776,26 +857,7 @@ function validarCampo(campo, valor, idioma, solicitante) {
     return null;
 }
 
-// ---------- Pago: paso entre la hoja completa y el PDF ----------
-function mensajePago(solicitud, continuar) {
-    const tieneEnlace = ENLACE_PAGO && ENLACE_PAGO.length > 0;
-    const enlace = tieneEnlace
-        ? '<a href="' + escapar(ENLACE_PAGO) + '" target="_blank" rel="noopener" style="color:var(--mar-claro); font-weight:700;">' + t("Realizar el depósito de 10 pesos mexicanos", "Make the 10 Mexican pesos payment") + '</a>'
-        : '<strong style="color:#b45309;">' + t("[ENLACE DE PAGO POR COLOCAR — 10 PESOS MEXICANOS]", "[PAYMENT LINK TO BE ADDED — 10 MEXICAN PESOS]") + '</strong>';
-    const texto = t(
-        "Tu contribución de apoyo es de 10 pesos mexicanos por esta interacción, con mi acompañamiento durante 24 horas.\n\nSi estás de acuerdo, realiza el depósito aquí:\n\n",
-        "Your support contribution is 10 Mexican pesos for this interaction, with my support for 24 hours.\n\nIf you agree, make the payment here:\n\n"
-    ) + enlace + "\n\n" + t("Cuando termines, toca el botón de abajo para descargar tu solicitud.", "When you are done, tap the button below to download your request.");
-    agregarMensaje(texto, "asistente", [
-        { etiqueta: t("🖨️ Continuar: descargar solicitud en formato oficial (PDF)", "🖨️ Continue: download official request form (PDF)"), accion: continuar, estilo: "primario" },
-        { etiqueta: t("📄 Ver qué más llevar en mi carpeta", "📄 See what else to bring"), accion: () => decirCarpeta(flujoTramiteDe(solicitud), solicitud.idiomaAuxiliar || "es") }
-    ]);
-    if (vozAutomatica) leerEnVoz(texto.replace(/<[^>]+>/g, ""), null);
-}
 
-function flujoTramiteDe(solicitud) {
-    return TRAMITES.find(x => x.id === solicitud.tramiteId) || null;
-}
 
 function concluirSolicitud() {
     const idioma = idiomaFlujo();
@@ -823,17 +885,72 @@ function concluirSolicitud() {
         "Your request is complete.\n\n"
     );
     resumen += "📄 " + tramiteNombre(tr, idioma) + " (" + tr.clave + ")\n";
-    resumen += t("🔖 Folio de seguimiento: ", "🔖 Reference number: ") + solicitud.folio + "\n\n";
+    resumen += t("🔖 Número de referencia (para ti): ", "🔖 Reference number (for you): ") + solicitud.folio + "\n\n";
     resumen += t(
-        "Tu hoja de solicitud, en el formato oficial y en español, está lista. Preséntala en la oficina correspondiente con tu carpeta de documentos.",
-        "Your request sheet, in the official form and in Spanish, is ready. Submit it at the corresponding office with your document folder."
+        "Tu hoja de solicitud, en el formato oficial y en español, está lista. Preséntala en la oficina correspondiente con tu carpeta de documentos.\n\n" +
+        "📌 Nota importante: el folio oficial de seguimiento te lo dará la oficina cuando recibas tu trámite. El número de arriba es solo del asistente, para que puedas identificar tu solicitud en este dispositivo.",
+        "Your request sheet, in the official form and in Spanish, is ready. Submit it at the corresponding office with your document folder.\n\n" +
+        "📌 Important: the official reference number will be given to you by the office when you submit your procedure. The number above is only from the assistant, so you can identify your request on this device."
     );
 
     flujo = null;
     decir(resumen, [
-        { etiqueta: t("💳 Continuar", "💳 Continue"), accion: () => mensajePago(solicitud, () => generarPDF(solicitud)), estilo: "primario" },
-        { etiqueta: t("🔎 Ver el estatus de mi solicitud", "🔎 Check my request status"), accion: () => iniciarConsultaEstatus() }
+        { etiqueta: t("📄 Descargar mi solicitud (PDF)", "📄 Download my request (PDF)"), accion: () => descargarYApoyar(solicitud), estilo: "primario", persistente: true },
+        { etiqueta: t("📁 Ver qué más llevar", "📁 See what else to bring"), accion: () => decirCarpeta(tr, idioma), persistente: true },
+        { etiqueta: t("🕐 Ver plazos y tiempos de atención", "🕐 See deadlines and service hours"), accion: () => verPlazosYRecordatorio(solicitud), persistente: true }
     ]);
+}
+
+function descargarYApoyar(solicitud) {
+    generarPDF(solicitud);
+    setTimeout(() => mostrarApoyo(), 900);
+}
+
+function mostrarApoyo() {
+    const tieneEnlace = ENLACE_APOYO && ENLACE_APOYO.length > 0;
+    let texto = t(
+        "🎉 Listo, tu solicitud está descargada.\n\n" +
+        "💛 Este asistente es y seguirá siendo gratuito en su función principal.\n\n" +
+        "Si te sirvió, puedes apoyar el proyecto con una donación voluntaria. Es 100% opcional — la app funciona completa sin necesidad de donar. Tu apoyo ayuda a mantenerla en línea y a seguir agregando más trámites de otras dependencias.\n\n" +
+        "🙏 Gracias por confiar en este proyecto.",
+        "🎉 Done, your request has been downloaded.\n\n" +
+        "💛 This assistant is and will remain free in its main function.\n\n" +
+        "If it helped you, you can support the project with a voluntary donation. It is 100% optional — the app works fully without donating. Your support helps keep it online and add more procedures from other agencies.\n\n" +
+        "🙏 Thank you for trusting this project."
+    );
+    const botones = [];
+    if (tieneEnlace) {
+        botones.push({
+            etiqueta: t("💛 Apoyar al proyecto", "💛 Support the project"),
+            accion: () => abrirEnlaceApoyo(),
+            estilo: "primario"
+        });
+    }
+    botones.push({
+        etiqueta: t("📋 Hacer otro trámite", "📋 Start another procedure"),
+        accion: () => { flujo = null; menuTramites(); }
+    });
+    botones.push({
+        etiqueta: t("📋 Ver mis solicitudes guardadas", "📋 See my saved requests"),
+        accion: () => listarSolicitudesLocales()
+    });
+    decir(texto, botones);
+}
+
+function abrirEnlaceApoyo() {
+    // Intentar abrir en nueva pestaña
+    const ventana = window.open(ENLACE_APOYO, "_blank", "noopener");
+    if (!ventana || ventana.closed || typeof ventana.closed === "undefined") {
+        // Pop-up bloqueado: mostrar el enlace para copiar manualmente
+        decir(t(
+            "⚠️ Tu navegador bloqueó la ventana emergente.\n\n" +
+            "Copia y pega este enlace en tu navegador para hacer tu donación:\n\n" +
+            ENLACE_APOYO,
+            "⚠️ Your browser blocked the pop-up.\n\n" +
+            "Copy and paste this link into your browser to make your donation:\n\n" +
+            ENLACE_APOYO
+        ));
+    }
 }
 
 function decirCarpeta(tr, idioma) {
@@ -953,14 +1070,46 @@ function generarPDF(s) {
 }
 
 // ---------- Consulta de estatus ----------
-function iniciarConsultaEstatus() {
-    decir(t(
-        "Para revisar tu solicitud dame tu folio de seguimiento (empieza con \"UN-\"). Si no lo tienes a la mano, puedo mostrarte las solicitudes guardadas en este dispositivo.",
-        "To check your request, give me your reference number (it starts with \"UN-\"). If you do not have it handy, I can show the requests saved on this device."
-    ), [
+function verPlazosYRecordatorio(solicitud) {
+    const tr = flujoTramiteDe(solicitud);
+    const idioma = perfil.idioma === "en" ? "en" : "es";
+
+    let texto = t(
+        "🕐 PLAZOS Y TIEMPOS DE ATENCIÓN\n\n" +
+        "📍 Las oficinas de atención al público suelen operar de lunes a viernes, de 9:00 a 14:00 horas. Sábados, domingos y días festivos están cerradas.\n\n" +
+        "⏳ El tiempo de respuesta del trámite depende de cada oficina. Como orientación general, suele resolverse entre 5 y 15 días hábiles.\n\n" +
+        "📞 Para saber cómo va el avance de tu trámite, comunícate directamente con la oficina donde lo presentaste, o consúltalo en el portal oficial.",
+        "🕐 DEADLINES AND SERVICE HOURS\n\n" +
+        "📍 Public service offices usually operate Monday to Friday, 9:00 a.m. to 2:00 p.m. Saturdays, Sundays and holidays are closed.\n\n" +
+        "⏳ The response time depends on each office. As a general guide, it is usually resolved within 5 to 15 business days.\n\n" +
+        "📞 To know how your procedure is progressing, contact the office where you submitted it directly, or check it on the official portal."
+    );
+
+    decir(texto, [
+        { etiqueta: t("🔔 Ponerme un recordatorio en este dispositivo", "🔔 Set a reminder on this device"), accion: () => crearRecordatorio(solicitud), persistente: true },
         { etiqueta: t("📋 Ver mis solicitudes guardadas", "📋 See my saved requests"), accion: () => listarSolicitudesLocales() }
     ]);
-    flujo = { paso: "consultar-folio" };
+}
+
+function crearRecordatorio(solicitud) {
+    const dias = 10; // 10 días hábiles como referencia razonable
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + dias);
+    solicitud.recordatorio = fecha.toISOString().slice(0, 10);
+    // Guardar actualizado
+    const lista = cargarSolicitudes();
+    const idx = lista.findIndex(x => x.folio === solicitud.folio);
+    if (idx >= 0) { lista[idx] = solicitud; guardarLocal(CLAVE_SOLICITUDES, lista); }
+
+    const fechaBonita = formatearFecha(solicitud.recordatorio, perfil.idioma);
+    decir(t(
+        "🔔 Recordatorio guardado.\n\n" +
+        "Te sugerimos volver a este asistente a partir del " + fechaBonita + " para que preguntes en la oficina cómo va tu trámite.\n\n" +
+        "💡 Consejo: también puedes apuntar esa fecha en tu calendario o en tu teléfono, por si se borran los datos de este navegador.",
+        "🔔 Reminder saved.\n\n" +
+        "We suggest you come back to this assistant starting on " + fechaBonita + " so you can ask at the office how your procedure is going.\n\n" +
+        "💡 Tip: you can also write that date in your calendar or on your phone, in case this browser's data is cleared."
+    ));
 }
 
 function listarSolicitudesLocales() {
@@ -974,50 +1123,25 @@ function listarSolicitudesLocales() {
         etiqueta: "📄 " + s.folio + " — " + s.tramiteNombre.split("—")[0].trim(),
         accion: () => mostrarEstatus(s)
     }));
-    decir(t("Estas son tus solicitudes guardadas en este dispositivo. Toca la tuya para ver su estatus:",
-            "These are the requests saved on this device. Tap yours to see its status:"), botones);
+    decir(t("Estas son tus solicitudes guardadas en este dispositivo. Toca la tuya para verla o descargarla:",
+            "These are the requests saved on this device. Tap yours to view or download it:"), botones);
 }
 
 function mostrarEstatus(s) {
-    const pasos = ["recibida", "en proceso", "concluida"];
-    const indiceActual = pasos.indexOf(s.estatus);
-    let html = escapar("🔎 " + s.folio + " — " + s.tramiteNombre + "\n");
-    html += escapar("📅 " + t("Creada", "Created") + ": " + formatearFecha(s.fecha, perfil.idioma) + " · " + t("Estatus", "Status") + ": " + s.estatus.toUpperCase() + "\n");
-    const ultimo = s.historial && s.historial.length ? s.historial[s.historial.length - 1] : null;
-    html += escapar(ultimo ? "📝 " + t("Último movimiento", "Last update") + ": " + ultimo.fecha + (ultimo.nota ? " — " + ultimo.nota : "") : "");
-
-    let barra = '<div class="barra-estatus">';
-    pasos.forEach((p, i) => {
-        let clase = "";
-        if (i < indiceActual) clase = "hecho";
-        else if (i === indiceActual) clase = "actual";
-        barra += '<div class="paso-estatus ' + clase + '">' + p + "</div>";
-    });
-    barra += "</div>";
-
-    const botones = [];
-    if (s.estatus !== "concluida") {
-        botones.push({ etiqueta: t("⏩ Simular avance de estatus (demostración)", "⏩ Simulate status advance (demo)"), accion: () => avanzarEstatus(s) });
+    let html = escapar("📄 " + s.folio + " — " + s.tramiteNombre + "\n");
+    html += escapar("📅 " + t("Creada", "Created") + ": " + formatearFecha(s.fecha, perfil.idioma) + "\n");
+    if (s.recordatorio) {
+        html += escapar("🔔 " + t("Recordatorio sugerido", "Suggested reminder") + ": " + formatearFecha(s.recordatorio, perfil.idioma) + "\n");
     }
-    botones.push({ etiqueta: t("🖨️ Descargar mi solicitud (PDF)", "🖨️ Download my request (PDF)"), accion: () => generarPDF(s) });
+
+    const botones = [
+        { etiqueta: t("🖨️ Descargar mi solicitud (PDF)", "🖨️ Download my request (PDF)"), accion: () => generarPDF(s), persistente: true },
+        { etiqueta: t("🕐 Ver plazos y tiempos", "🕐 See deadlines and hours"), accion: () => verPlazosYRecordatorio(s), persistente: true }
+    ];
     flujo = null;
 
-    agregarMensaje(html, "asistente", botones, { html: html + barra });
-    if (vozAutomatica) leerEnVoz(t("Tu solicitud ", "Your request ") + s.folio + t(" está ", " is ") + s.estatus + ".", null);
-}
-
-function avanzarEstatus(s) {
-    const pasos = ["recibida", "en proceso", "concluida"];
-    const i = pasos.indexOf(s.estatus);
-    if (i < 0 || i >= pasos.length - 1) return;
-    const nuevo = pasos[i + 1];
-    s.estatus = nuevo;
-    const notas = { "en proceso": "En revisión en la oficina correspondiente", "concluida": "Documento listo para entrega" };
-    s.historial.push({ estatus: nuevo, fecha: hoyISO(), nota: notas[nuevo] });
-    const lista = cargarSolicitudes();
-    const idx = lista.findIndex(x => x.folio === s.folio);
-    if (idx >= 0) { lista[idx] = s; guardarLocal(CLAVE_SOLICITUDES, lista); }
-    mostrarEstatus(s);
+    agregarMensaje(html, "asistente", botones);
+    if (vozAutomatica) leerEnVoz(t("Esta es tu solicitud ", "This is your request ") + s.folio + ".", null);
 }
 
 // ---------- Horarios: solo cuando el usuario va a presentarse ----------
@@ -1055,8 +1179,8 @@ function procesarMensaje(texto) {
     if (flujo && flujo.paso === "consultar-curp") { procesarConsultaCurp(texto); return; }
 
     // Intención: consultar estatus
-    if (/(estatus|status|consultar|seguimiento|folio|mi solicitud|my request|que paso|que paso con)/.test(n)) {
-        iniciarConsultaEstatus();
+    if (/(estatus|status|consultar|seguimiento|folio|mi solicitud|my request|que paso|que paso con|mis solicitudes|solicitudes guardadas)/.test(n)) {
+        listarSolicitudesLocales();
         return;
     }
 
@@ -1112,42 +1236,14 @@ function procesarMensaje(texto) {
     decir(respuestaGeneral());
 }
 
-function procesarConsultaFolio(texto) {
-    const f = texto.trim();
-    const en = perfil.idioma === "en";
-    if (/^(un-)?\d{4}/i.test(f) || /^un-/i.test(f)) {
-        flujo.paso = "consultar-curp";
-        flujo.folioTemp = f.toUpperCase();
-        decir(en
-            ? "Now, to protect your data, give me the first 4 characters of your CURP."
-            : "Ahora, para proteger tus datos, dame los primeros 4 caracteres de tu CURP.");
-        return;
-    }
-    if (/^(no|nada|no lo tengo|olvide|dont|don t|no tengo)/.test(normalizar(f))) {
-        listarSolicitudesLocales();
-        return;
-    }
-    decir(en
-        ? "That reference number doesn't have the expected format. It starts with \"UN-\", for example: UN-2026-1234. Or type \"no tengo\" to see your saved requests."
-        : "Ese folio no tiene el formato esperado. Empieza con \"UN-\", por ejemplo: UN-2026-1234. O escribe \"no lo tengo\" para ver tus solicitudes guardadas aquí.");
-}
 
-function procesarConsultaCurp(texto) {
-    const curp = texto.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
-    const s = buscarSolicitud(flujo.folioTemp, curp);
-    flujo = null;
-    if (s) { mostrarEstatus(s); return; }
-    decir(perfil.idioma === "en"
-        ? "No request was found with that number and data on this device. Check they are correct. In this demo version, only requests made in this same browser can be checked."
-        : "No encontré una solicitud con ese folio y esos datos en este dispositivo. Verifica que estén correctos. En esta versión demostrativa solo se consultan las solicitudes hechas en este mismo navegador.");
-}
 
 function respuestaGeneral() {
     return (perfil.idioma === "en"
 ? `📌 I CAN HELP YOU WITH
 
 📋 "procedures" — see the full list by category
-🔎 "my request" — check your status with your reference number
+📋 "my requests" — see your saved requests
 💰 Fees · 🕐 Hours
 
 Ask about any procedure in your own words, for example:
@@ -1155,7 +1251,7 @@ Ask about any procedure in your own words, for example:
 : `📌 PUEDO AYUDARTE DE ESTAS FORMAS
 
 📋 "trámites" — ver la lista completa por categoría
-🔎 "mi solicitud" — revisar tu estatus con tu folio
+📋 "mis solicitudes" — ver tus solicitudes guardadas
 💰 Costos · 🕐 Horarios
 
 Pregúntame por cualquier trámite con tus palabras, por ejemplo:
@@ -1177,9 +1273,23 @@ function enviarMensaje() {
     const campo = document.getElementById("texto-usuario");
     const texto = campo.value.trim();
     if (!texto) return;
-    agregarMensaje(texto, "usuario");
+    // Capturar el contexto ANTES de procesar (para poder restaurar al editar)
+    const contexto = capturarContextoFlujo();
+    agregarMensaje(texto, "usuario", null, { contexto });
     campo.value = "";
+    const aviso = document.getElementById("aviso-confianza");
+    if (aviso) aviso.classList.remove("visible");
     pensarYResponder(() => procesarMensaje(texto), 400);
+}
+
+function capturarContextoFlujo() {
+    if (!flujo) return null;
+    return {
+        paso: flujo.paso || null,
+        indice: typeof flujo.indice === "number" ? flujo.indice : null,
+        tramiteId: flujo.tramite ? flujo.tramite.id : null,
+        seccionDictado: typeof flujo.seccionDictado === "number" ? flujo.seccionDictado : null
+    };
 }
 
 // ---------- Micrófono ----------
@@ -1192,8 +1302,17 @@ function configurarMicrofono() {
     reconocimiento = new ReconocimientoVoz();
     reconocimiento.continuous = false;
     reconocimiento.onresult = e => {
-        document.getElementById("texto-usuario").value = e.results[0][0].transcript;
-        enviarMensaje();
+        const resultado = e.results[0][0];
+        const texto = resultado.transcript;
+        const confianza = resultado.confidence;
+        const campo = document.getElementById("texto-usuario");
+        campo.value = texto;
+        campo.focus();
+        // No enviamos automáticamente: el usuario revisa y confirma.
+        // Si la confianza es baja, avisamos con un mensaje amarillo.
+        if (confianza > 0 && confianza < 0.7 && texto.length > 6) {
+            mostrarAvisoConfianza();
+        }
     };
     reconocimiento.onend = () => {
         reconociendo = false;
@@ -1207,6 +1326,17 @@ function configurarMicrofono() {
 
 function actualizarIdiomaMicrofono() {
     if (reconocimiento) reconocimiento.lang = perfil.idioma === "en" ? "en-US" : "es-MX";
+}
+
+function mostrarAvisoConfianza() {
+    const aviso = document.getElementById("aviso-confianza");
+    if (!aviso) return;
+    aviso.textContent = perfil.idioma === "en"
+        ? "⚠️ I'm not sure I heard you right. Check the text below, correct it if needed, then tap ➤ to send."
+        : "⚠️ No estoy seguro de haber escuchado bien. Revisa el texto, corrígelo si es necesario y toca ➤ para enviar.";
+    aviso.classList.add("visible");
+    clearTimeout(aviso._timer);
+    aviso._timer = setTimeout(() => aviso.classList.remove("visible"), 8000);
 }
 
 // ---------- Perfil y modales ----------
@@ -1239,6 +1369,7 @@ function actualizarBotonGuardar() {
 
 function guardarConfiguracion(primeraVez) {
     guardarLocal(CLAVE_PERFIL, perfil);
+    document.documentElement.lang = perfil.idioma === "en" ? "en" : "es";
     actualizarIdiomaMicrofono();
     actualizarPlaceholder();
     renderBotonesFijos();
@@ -1316,23 +1447,41 @@ function reiniciarAsistente() {
 
 // ---------- Privacidad ----------
 function abrirModalPrivacidadIdioma() {
+    renderizarContenidoPrivacidad();
+    actualizarSelectorIdiomaPrivacidad();
+    document.getElementById("modal-privacidad").classList.add("visible");
+}
+
+function renderizarContenidoPrivacidad() {
     const es = perfil.idioma !== "en";
     document.getElementById("titulo-privacidad").textContent = es ? "🔒 Aviso de Privacidad" : "🔒 Privacy Notice";
+    document.getElementById("subtitulo-privacidad").textContent = es
+        ? "Elige tu idioma · Choose your language"
+        : "Choose your language · Elige tu idioma";
     document.getElementById("cuerpo-privacidad").innerHTML = es
 ? `<p><strong>Este sitio es un asistente de apoyo independiente.</strong> No está afiliado a ningún ente de gobierno; es una herramienta privada que te orienta y te ayuda a preparar tus documentos. Los trámites se concluyen únicamente en las oficinas o sitios oficiales correspondientes.</p>
 <p><strong>Qué datos se piden:</strong> solo los que tú decidas escribir para llenar tu solicitud (nombre, CURP, domicilio, teléfono, etc.).</p>
-<p><strong>Para qué se usan:</strong> únicamente para llenar tu hoja de solicitud y tu folio de seguimiento.</p>
+<p><strong>Para qué se usan:</strong> únicamente para llenar tu hoja de solicitud y tu número de referencia.</p>
 <p><strong>Quién los ve:</strong> <strong>nadie más que tú.</strong> Toda la información se guarda solamente en tu propio dispositivo (navegador). No se envía a ningún servidor ni se comparte con nadie.</p>
 <p><strong>Cómo borrarlos:</strong> desde el botón de configuración ⚙️ ("Borrar mis datos") o limpiando el historial de tu navegador.</p>
+<p><strong>Costo:</strong> este asistente es gratuito. Si te sirve, al final puedes apoyar el proyecto con una donación voluntaria, 100% opcional.</p>
 <p>Al continuar, aceptas este manejo de tus datos personales.</p>`
 : `<p><strong>This site is an independent support assistant.</strong> It is not affiliated with any government entity; it is a private tool that guides you and helps you prepare your documents. Procedures are completed only at the corresponding official offices or sites.</p>
 <p><strong>What data is asked:</strong> only what you choose to type to fill your request form (name, ID code, address, phone, etc.).</p>
-<p><strong>What it is used for:</strong> only to fill your request sheet and your tracking number.</p>
+<p><strong>What it is used for:</strong> only to fill your request sheet and your reference number.</p>
 <p><strong>Who sees it:</strong> <strong>nobody but you.</strong> All information is stored only on your own device (browser). It is not sent to any server nor shared with anyone.</p>
 <p><strong>How to delete it:</strong> from the settings button ⚙️ ("Borrar mis datos") or by clearing your browser history.</p>
+<p><strong>Cost:</strong> this assistant is free. If it helps you, at the end you can support the project with a voluntary donation, 100% optional.</p>
 <p>By continuing, you accept this handling of your personal data.</p>`;
-    document.getElementById("boton-aceptar-privacidad").textContent = es ? "Acepto — quiero usar el asistente" : "I accept — let me use the assistant";
-    document.getElementById("modal-privacidad").classList.add("visible");
+    document.getElementById("boton-aceptar-privacidad").textContent = es
+        ? "Acepto — quiero usar el asistente"
+        : "I accept — let me use the assistant";
+}
+
+function actualizarSelectorIdiomaPrivacidad() {
+    document.querySelectorAll("#selector-idioma-privacidad .opcion-idioma").forEach(btn => {
+        btn.classList.toggle("elegida", perfil.idioma === btn.dataset.idioma);
+    });
 }
 
 // ---------- Inicio ----------
@@ -1340,6 +1489,7 @@ function iniciar() {
     const acepto = localStorage.getItem(CLAVE_PRIMER_USO);
     const perfilGuardado = leerLocal(CLAVE_PERFIL, null);
     if (perfilGuardado) perfil = { voz: null, idioma: "es", ...perfilGuardado };
+    document.documentElement.lang = perfil.idioma === "en" ? "en" : "es";
 
     renderBotonesFijos();
     document.getElementById("interruptor-voz").setAttribute("aria-checked", vozAutomatica ? "true" : "false");
@@ -1402,6 +1552,20 @@ function iniciar() {
             perfil.idioma = btn.dataset.idioma;
             actualizarEleccionIdioma();
             actualizarBotonGuardar();
+        });
+    });
+
+    // Selector de idioma dentro del modal de privacidad
+    document.querySelectorAll("#selector-idioma-privacidad .opcion-idioma").forEach(btn => {
+        btn.addEventListener("click", () => {
+            perfil.idioma = btn.dataset.idioma;
+            guardarLocal(CLAVE_PERFIL, perfil);
+            document.documentElement.lang = perfil.idioma === "en" ? "en" : "es";
+            actualizarSelectorIdiomaPrivacidad();
+            renderizarContenidoPrivacidad();
+            actualizarPlaceholder();
+            actualizarIdiomaMicrofono();
+            actualizarAvatar();
         });
     });
 

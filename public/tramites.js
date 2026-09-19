@@ -411,7 +411,7 @@ const TRAMITES = [
         nombreEn: "Seaman's Book Type A — Merchant Marine (First time)",
         clave: "SEMAR-05-009-A",
         rutaRapida: "libretas",
-        clavesBusqueda: ["libreta de mar", "libreta tipo a", "marina mercante"],
+        clavesBusqueda: ["libreta de mar", "libreta tipo a", "libreta a", "tipo a", "marina mercante"],
         enLinea: false,
         sinopsis: "Documento de identidad marítima para tripulantes de la marina mercante y navegación internacional.",
         sinopsisEn: "Maritime identity document for merchant marine crew and international navigation.",
@@ -455,6 +455,7 @@ const TRAMITES = [
         nombreEn: "Seaman's Book Type B — Fishing (First time)",
         clave: "SEMAR-05-009-B",
         rutaRapida: "libretas",
+        clavesBusqueda: ["libreta de mar", "libreta tipo b", "libreta b", "tipo b", "pesca", "pescador"],
         enLinea: false,
         sinopsis: "Documento de identidad marítima para pescadores y tripulantes de embarcaciones pesqueras.",
         sinopsisEn: "Maritime identity document for fishermen and fishing vessel crew.",
@@ -478,6 +479,7 @@ const TRAMITES = [
         nombreEn: "Seaman's Book Type C — Recreational (First time)",
         clave: "SEMAR-05-009-C",
         rutaRapida: "libretas",
+        clavesBusqueda: ["libreta de mar", "libreta tipo c", "libreta c", "tipo c", "recreo", "deportivo", "yate"],
         enLinea: false,
         sinopsis: "Documento de identidad marítima para quienes navegan embarcaciones de recreo deportivo o turismo.",
         sinopsisEn: "Maritime identity document for recreational or tourism vessel operators.",
@@ -501,6 +503,7 @@ const TRAMITES = [
         nombreEn: "Seaman's Book Type D — Offshore Platforms (First time)",
         clave: "SEMAR-05-009-D",
         rutaRapida: "libretas",
+        clavesBusqueda: ["libreta de mar", "libreta tipo d", "libreta d", "tipo d", "plataforma", "costa afuera", "offshore"],
         enLinea: false,
         sinopsis: "Documento de identidad marítima para personal que trabaja en plataformas costa afuera.",
         sinopsisEn: "Maritime identity document for offshore platform personnel.",
@@ -752,11 +755,11 @@ const TRAMITES = [
         ],
         seccionesDictado: [
             { id: "hechos", etiqueta: "Descripción detallada de los hechos", etiquetaEn: "Detailed description of events",
-              introduccion: "Ahora cuéntame, con todas las palabras que quieras, TODO lo que pasó. Dicta tu relato completo: qué estabas haciendo, qué pasó y qué hiciste después. Usa cuantos mensajes necesites; escribe \"terminé\" cuando acabes.",
-              introduccionEn: "Now tell me, in as many words as you want, EVERYTHING that happened. Dictate your full account: what you were doing, what happened and what you did after. Use as many messages as you need; write \"terminé\" (done) when finished." },
+              introduccion: "Ahora cuéntame, con todas las palabras que quieras, TODO lo que pasó. Dicta tu relato completo: qué estabas haciendo, qué pasó y qué hiciste después. Puedes usar cuantos mensajes necesites. Cuando acabes esta parte, toca \"✅ Ya terminé esta sección\".",
+              introduccionEn: "Now tell me, in as many words as you want, EVERYTHING that happened. Dictate your full account: what you were doing, what happened and what you did after. Use as many messages as you need. When you finish this part, tap \"✅ I finished this section\"." },
             { id: "danos", etiqueta: "Daños a la embarcación, carga o personas", etiquetaEn: "Damage to vessel, cargo or people",
-              introduccion: "¿Qué daños hubo? Describe daños a la embarcación, al equipo, a la carga o a las personas. Si no hubo daños, escribe \"sin daños\".",
-              introduccionEn: "What damage was there? Describe damage to the vessel, equipment, cargo or people. If there was none, write \"sin daños\" (no damage)." },
+              introduccion: "¿Qué daños hubo? Describe daños a la embarcación, al equipo, a la carga o a las personas. Si no hubo daños, simplemente escribe \"sin daños\" y toca el botón.",
+              introduccionEn: "What damage was there? Describe damage to the vessel, equipment, cargo or people. If there was none, just write \"sin daños\" (no damage) and tap the button." },
             { id: "personas", etiqueta: "Personas involucradas o lesionadas", etiquetaEn: "People involved or injured",
               introduccion: "¿Quiénes estaban involucrados? Nombres de la tripulación, pasajeros o terceros, y si alguien resultó lesionado.",
               introduccionEn: "Who was involved? Names of crew, passengers or third parties, and whether anyone was injured." },
@@ -767,21 +770,177 @@ const TRAMITES = [
     }
 ];
 
-// ---------- Estatus en línea según el instructivo oficial de SEMAR ----------
-// Ingresables por internet: el grupo de embarcaciones y matrículas
-// (SEMAR-05-001 a 007, 015, 017 a 022). La identidad marítima (Libreta de Mar
-// 009, Documento de Identidad Marítima 010) y los accidentes se presentan en
-// persona en la Capitanía de Puerto.
-const TRAMITES_EN_LINEA = new Set([
-    "certificacion-documentos",
-    "mat-001", "mat-002", "mat-003", "mat-004a", "mat-004b", "mat-004c", "mat-004d", "mat-004e", "mat-005",
-    "arribo-menor-altura", "arribo-menor-cabotaje", "arribo-mayor-altura", "arribo-mayor-cabotaje", "despacho"
-]);
-const PORTAL_UNAMAN = "https://www.gob.mx/semar/unaman";
+// ---------- Estatus en línea y portales oficiales ----------
+// Fuente oficial (actualizada a 2026):
+// https://www.gob.mx/semar/unaman/es/articulos/1-de-julio
+const PORTALES_EN_LINEA = {
+    // Libretas de Mar y Documento de Identidad Marítima
+    "libreta-a":       "https://cp.semar.gob.mx/cp/Sigem/TramiteInternet",
+    "libreta-c":       "https://cp.semar.gob.mx/cp/Sigem/TramiteInternet",
+    "libreta-d":       "https://cp.semar.gob.mx/cp/Sigem/TramiteInternet",
+    "dim-primera":     "https://cp.semar.gob.mx/cp/Sigem/TramiteInternet",
+    "dim-renovacion":  "https://cp.semar.gob.mx/cp/Sigem/TramiteInternet",
+    // Navegación — Arribos
+    "arribo-mayor-altura":   "https://cp.semar.gob.mx/cp/Sicapam/TramiteInternet?cUA=1&TiD=578&MiD=0",
+    "arribo-menor-altura":   "https://cp.semar.gob.mx/cp/Sicapam/TramiteInternet?cUA=1&TiD=579&MiD=0",
+    "arribo-mayor-cabotaje": "https://cp.semar.gob.mx/cp/Sicapam/TramiteInternet?cUA=1&TiD=580&MiD=0",
+    "arribo-menor-cabotaje": "https://cp.semar.gob.mx/cp/Sicapam/TramiteInternet?cUA=1&TiD=581&MiD=0",
+    // Navegación — Despacho (4 variantes oficiales)
+    "despacho-menor-altura":   "https://cp.semar.gob.mx/cp/Sicapam/TramiteInternet?cUA=1&TiD=583&MiD=0",
+    "despacho-mayor-altura":   "https://cp.semar.gob.mx/cp/Sicapam/TramiteInternet?cUA=1&TiD=584&MiD=0",
+    "despacho-menor-cabotaje": "https://cp.semar.gob.mx/cp/Sicapam/TramiteInternet?cUA=1&TiD=585&MiD=0",
+    "despacho-mayor-cabotaje": "https://cp.semar.gob.mx/cp/Sicapam/TramiteInternet?cUA=1&TiD=586&MiD=0"
+};
+
+// ---------- TRÁMITES DE DESPACHO (nuevas variantes) ----------
+// Se agregan al catálogo general. Reutilizan la misma estructura.
+const TRAMITES_DESPACHO = [
+    {
+        id: "despacho-menor-altura",
+        categoria: "navegacion",
+        nombre: "Despacho de embarcaciones o artefactos navales menores en navegación de altura",
+        nombreEn: "Clearance of small vessels or naval artifacts on high seas",
+        clave: "SEMAR-05-018-A",
+        enLinea: true,
+        clavesBusqueda: ["despacho menor altura", "despachar menor altura", "clearance small high seas"],
+        sinopsis: "Autorización para que una embarcación menor zarpe hacia aguas de navegación de altura.",
+        sinopsisEn: "Authorization for a small vessel to depart for high seas navigation.",
+        requisitos: ["Matrícula y documentos vigentes de la embarcación", "Libretas de mar vigentes del patrón y toda la tripulación", "Identificación oficial de cada miembro", "Lista de tripulantes firmada", "Comprobante de pago de derechos"],
+        requisitosEn: ["Vessel registry certificate and valid documents", "Valid seaman's books for the master and all crew", "Official ID for each crew member", "Signed crew list", "Proof of payment of fees"],
+        vigencia: "Por cada viaje",
+        vigenciaEn: "Per voyage",
+        campos: [
+            { id: "nombrePatron", seccion: "solicitante", etiqueta: "Nombre del patrón", etiquetaEn: "Master's name", pregunta: "¿Cuál es el nombre completo del patrón del viaje?", preguntaEn: "What is the voyage master's full name?", tipo: "texto", obligatorio: true },
+            { id: "curp", seccion: "solicitante", etiqueta: "CURP del patrón", etiquetaEn: "Master's CURP", pregunta: "¿Cuál es la CURP del patrón?", preguntaEn: "What is the master's CURP?", tipo: "curp", obligatorio: true },
+            { id: "nombreEmbarcacion", seccion: "embarcacion", etiqueta: "Nombre de la embarcación", etiquetaEn: "Vessel name", pregunta: "¿Cómo se llama tu embarcación, según su matrícula?", preguntaEn: "What is your vessel's name, as shown on its registry certificate?", tipo: "texto", obligatorio: true },
+            { id: "matricula", seccion: "embarcacion", etiqueta: "Matrícula", etiquetaEn: "Registry number", pregunta: "¿Cuál es el número de matrícula de la embarcación?", preguntaEn: "What is the vessel's registry number?", tipo: "texto", obligatorio: true },
+            { id: "puertoSalida", seccion: "tramite", etiqueta: "Puerto de salida", etiquetaEn: "Port of departure", pregunta: "¿De qué puerto zarpas?", preguntaEn: "From which port are you departing?", tipo: "texto", obligatorio: true },
+            { id: "puertoDestino", seccion: "tramite", etiqueta: "Puerto o zona de destino", etiquetaEn: "Destination port or area", pregunta: "¿A qué puerto o zona vas?", preguntaEn: "Which port or area are you going to?", tipo: "texto", obligatorio: true },
+            { id: "numTripulantes", seccion: "tramite", etiqueta: "Personas a bordo", etiquetaEn: "People on board", pregunta: "¿Cuántas personas van a bordo, incluyéndote?", preguntaEn: "How many people will be on board, including you?", tipo: "numero", obligatorio: true },
+            { id: "fechaZarpe", seccion: "tramite", etiqueta: "Fecha prevista de zarpe", etiquetaEn: "Expected departure date", pregunta: "¿Qué día piensas zarpar? Por ejemplo: 20 de octubre de 2026.", preguntaEn: "On what day do you plan to depart? For example: October 20, 2026.", tipo: "texto", obligatorio: true },
+            { id: "telefono", seccion: "solicitante", etiqueta: "Teléfono", etiquetaEn: "Phone", pregunta: "¿A qué teléfono te pueden llamar? 10 dígitos.", preguntaEn: "What phone number can they call? 10 digits.", tipo: "telefono", obligatorio: true }
+        ]
+    },
+    {
+        id: "despacho-mayor-altura",
+        categoria: "navegacion",
+        nombre: "Despacho de embarcaciones o artefactos navales mayores en navegación de altura",
+        nombreEn: "Clearance of large vessels or naval artifacts on high seas",
+        clave: "SEMAR-05-018-B",
+        enLinea: true,
+        clavesBusqueda: ["despacho mayor altura", "despachar mayor altura", "clearance large high seas"],
+        sinopsis: "Autorización para que una embarcación mayor zarpe hacia aguas de navegación de altura.",
+        sinopsisEn: "Authorization for a large vessel to depart for high seas navigation.",
+        requisitos: ["Matrícula y documentos vigentes de la embarcación", "Libretas de mar vigentes del capitán y toda la tripulación", "Identificación oficial de cada miembro", "Lista de tripulantes firmada", "Certificados aplicables", "Comprobante de pago de derechos"],
+        requisitosEn: ["Vessel registry certificate and valid documents", "Valid seaman's books for the master and all crew", "Official ID for each crew member", "Signed crew list", "Applicable certificates", "Proof of payment of fees"],
+        vigencia: "Por cada viaje",
+        vigenciaEn: "Per voyage",
+        campos: [
+            { id: "nombrePatron", seccion: "solicitante", etiqueta: "Nombre del capitán", etiquetaEn: "Master's name", pregunta: "¿Cuál es el nombre completo del capitán?", preguntaEn: "What is the master's full name?", tipo: "texto", obligatorio: true },
+            { id: "curp", seccion: "solicitante", etiqueta: "CURP del capitán", etiquetaEn: "Master's CURP", pregunta: "¿Cuál es la CURP del capitán?", preguntaEn: "What is the master's CURP?", tipo: "curp", obligatorio: true },
+            { id: "nombreEmbarcacion", seccion: "embarcacion", etiqueta: "Nombre de la embarcación", etiquetaEn: "Vessel name", pregunta: "¿Cómo se llama tu embarcación?", preguntaEn: "What is your vessel's name?", tipo: "texto", obligatorio: true },
+            { id: "matricula", seccion: "embarcacion", etiqueta: "Matrícula", etiquetaEn: "Registry number", pregunta: "¿Cuál es su número de matrícula?", preguntaEn: "What is its registry number?", tipo: "texto", obligatorio: true },
+            { id: "puertoSalida", seccion: "tramite", etiqueta: "Puerto de salida", etiquetaEn: "Port of departure", pregunta: "¿De qué puerto zarpas?", preguntaEn: "From which port are you departing?", tipo: "texto", obligatorio: true },
+            { id: "puertoDestino", seccion: "tramite", etiqueta: "Puerto o zona de destino", etiquetaEn: "Destination port or area", pregunta: "¿A qué puerto o zona vas?", preguntaEn: "Which port or area are you going to?", tipo: "texto", obligatorio: true },
+            { id: "numTripulantes", seccion: "tramite", etiqueta: "Personas a bordo", etiquetaEn: "People on board", pregunta: "¿Cuántas personas van a bordo, incluyéndote?", preguntaEn: "How many people will be on board, including you?", tipo: "numero", obligatorio: true },
+            { id: "fechaZarpe", seccion: "tramite", etiqueta: "Fecha prevista de zarpe", etiquetaEn: "Expected departure date", pregunta: "¿Qué día piensas zarpar? Por ejemplo: 20 de octubre de 2026.", preguntaEn: "On what day do you plan to depart? For example: October 20, 2026.", tipo: "texto", obligatorio: true },
+            { id: "telefono", seccion: "solicitante", etiqueta: "Teléfono", etiquetaEn: "Phone", pregunta: "¿A qué teléfono te pueden llamar? 10 dígitos.", preguntaEn: "What phone number can they call? 10 digits.", tipo: "telefono", obligatorio: true }
+        ]
+    },
+    {
+        id: "despacho-menor-cabotaje",
+        categoria: "navegacion",
+        nombre: "Autorización de zarpe de embarcaciones o artefactos navales menores",
+        nombreEn: "Departure authorization for small vessels or naval artifacts",
+        clave: "SEMAR-05-018-C",
+        enLinea: true,
+        clavesBusqueda: ["zarpe menor", "despacho menor cabotaje", "zarpe cabotaje menor"],
+        sinopsis: "Autorización de zarpe para embarcaciones menores que navegan en cabotaje.",
+        sinopsisEn: "Departure authorization for small vessels on coastal navigation.",
+        requisitos: ["Matrícula y documentos vigentes de la embarcación", "Libretas de mar vigentes del patrón y la tripulación", "Lista de tripulantes firmada", "Comprobante de pago de derechos"],
+        requisitosEn: ["Vessel registry certificate and valid documents", "Valid seaman's books for the master and crew", "Signed crew list", "Proof of payment of fees"],
+        vigencia: "Por cada viaje",
+        vigenciaEn: "Per voyage",
+        campos: [
+            { id: "nombrePatron", seccion: "solicitante", etiqueta: "Nombre del patrón", etiquetaEn: "Master's name", pregunta: "¿Cuál es el nombre completo del patrón?", preguntaEn: "What is the master's full name?", tipo: "texto", obligatorio: true },
+            { id: "curp", seccion: "solicitante", etiqueta: "CURP del patrón", etiquetaEn: "Master's CURP", pregunta: "¿Cuál es la CURP del patrón?", preguntaEn: "What is the master's CURP?", tipo: "curp", obligatorio: true },
+            { id: "nombreEmbarcacion", seccion: "embarcacion", etiqueta: "Nombre de la embarcación", etiquetaEn: "Vessel name", pregunta: "¿Cómo se llama tu embarcación?", preguntaEn: "What is your vessel's name?", tipo: "texto", obligatorio: true },
+            { id: "matricula", seccion: "embarcacion", etiqueta: "Matrícula", etiquetaEn: "Registry number", pregunta: "¿Cuál es su número de matrícula?", preguntaEn: "What is its registry number?", tipo: "texto", obligatorio: true },
+            { id: "puertoSalida", seccion: "tramite", etiqueta: "Puerto de salida", etiquetaEn: "Port of departure", pregunta: "¿De qué puerto zarpas?", preguntaEn: "From which port are you departing?", tipo: "texto", obligatorio: true },
+            { id: "puertoDestino", seccion: "tramite", etiqueta: "Puerto o zona de destino", etiquetaEn: "Destination port or area", pregunta: "¿A qué puerto o zona vas?", preguntaEn: "Which port or area are you going to?", tipo: "texto", obligatorio: true },
+            { id: "numTripulantes", seccion: "tramite", etiqueta: "Personas a bordo", etiquetaEn: "People on board", pregunta: "¿Cuántas personas van a bordo, incluyéndote?", preguntaEn: "How many people will be on board, including you?", tipo: "numero", obligatorio: true },
+            { id: "fechaZarpe", seccion: "tramite", etiqueta: "Fecha prevista de zarpe", etiquetaEn: "Expected departure date", pregunta: "¿Qué día piensas zarpar?", preguntaEn: "On what day do you plan to depart?", tipo: "texto", obligatorio: true },
+            { id: "telefono", seccion: "solicitante", etiqueta: "Teléfono", etiquetaEn: "Phone", pregunta: "¿A qué teléfono te pueden llamar? 10 dígitos.", preguntaEn: "What phone number can they call? 10 digits.", tipo: "telefono", obligatorio: true }
+        ]
+    },
+    {
+        id: "despacho-mayor-cabotaje",
+        categoria: "navegacion",
+        nombre: "Autorización de zarpe de embarcaciones o artefactos navales mayores",
+        nombreEn: "Departure authorization for large vessels or naval artifacts",
+        clave: "SEMAR-05-018-D",
+        enLinea: true,
+        clavesBusqueda: ["zarpe mayor", "despacho mayor cabotaje", "zarpe cabotaje mayor"],
+        sinopsis: "Autorización de zarpe para embarcaciones mayores que navegan en cabotaje.",
+        sinopsisEn: "Departure authorization for large vessels on coastal navigation.",
+        requisitos: ["Matrícula y documentos vigentes de la embarcación", "Libretas de mar vigentes del capitán y la tripulación", "Lista de tripulantes firmada", "Certificados aplicables", "Comprobante de pago de derechos"],
+        requisitosEn: ["Vessel registry certificate and valid documents", "Valid seaman's books for the master and crew", "Signed crew list", "Applicable certificates", "Proof of payment of fees"],
+        vigencia: "Por cada viaje",
+        vigenciaEn: "Per voyage",
+        campos: [
+            { id: "nombrePatron", seccion: "solicitante", etiqueta: "Nombre del capitán", etiquetaEn: "Master's name", pregunta: "¿Cuál es el nombre completo del capitán?", preguntaEn: "What is the master's full name?", tipo: "texto", obligatorio: true },
+            { id: "curp", seccion: "solicitante", etiqueta: "CURP del capitán", etiquetaEn: "Master's CURP", pregunta: "¿Cuál es la CURP del capitán?", preguntaEn: "What is the master's CURP?", tipo: "curp", obligatorio: true },
+            { id: "nombreEmbarcacion", seccion: "embarcacion", etiqueta: "Nombre de la embarcación", etiquetaEn: "Vessel name", pregunta: "¿Cómo se llama tu embarcación?", preguntaEn: "What is your vessel's name?", tipo: "texto", obligatorio: true },
+            { id: "matricula", seccion: "embarcacion", etiqueta: "Matrícula", etiquetaEn: "Registry number", pregunta: "¿Cuál es su número de matrícula?", preguntaEn: "What is its registry number?", tipo: "texto", obligatorio: true },
+            { id: "puertoSalida", seccion: "tramite", etiqueta: "Puerto de salida", etiquetaEn: "Port of departure", pregunta: "¿De qué puerto zarpas?", preguntaEn: "From which port are you departing?", tipo: "texto", obligatorio: true },
+            { id: "puertoDestino", seccion: "tramite", etiqueta: "Puerto o zona de destino", etiquetaEn: "Destination port or area", pregunta: "¿A qué puerto o zona vas?", preguntaEn: "Which port or area are you going to?", tipo: "texto", obligatorio: true },
+            { id: "numTripulantes", seccion: "tramite", etiqueta: "Personas a bordo", etiquetaEn: "People on board", pregunta: "¿Cuántas personas van a bordo, incluyéndote?", preguntaEn: "How many people will be on board, including you?", tipo: "numero", obligatorio: true },
+            { id: "fechaZarpe", seccion: "tramite", etiqueta: "Fecha prevista de zarpe", etiquetaEn: "Expected departure date", pregunta: "¿Qué día piensas zarpar?", preguntaEn: "On what day do you plan to depart?", tipo: "texto", obligatorio: true },
+            { id: "telefono", seccion: "solicitante", etiqueta: "Teléfono", etiquetaEn: "Phone", pregunta: "¿A qué teléfono te pueden llamar? 10 dígitos.", preguntaEn: "What phone number can they call? 10 digits.", tipo: "telefono", obligatorio: true }
+        ]
+    }
+];
+
+// Agregar los trámites de despacho al catálogo general
+TRAMITES.push(...TRAMITES_DESPACHO);
+
+// ---------- RUTA DE NAVEGACIÓN ACTUALIZADA (con sub-pasos para despacho) ----------
+RUTAS.navegacion = {
+    pasos: [
+        { id: "operacion", pregunta: "¿Qué necesitas: arribo o despacho?", preguntaEn: "What do you need: arrival or clearance?",
+          opciones: [
+              { valor: "arribo", etiqueta: "🛳️ Arribo (llego a puerto)", etiquetaEn: "🛳️ Arrival (I'm coming into port)" },
+              { valor: "despacho", etiqueta: "⚓ Despacho (voy a zarpar)", etiquetaEn: "⚓ Clearance (I'm departing)" }
+          ] },
+        { id: "tamano", pregunta: "¿Tu embarcación es menor o mayor?", preguntaEn: "Is your vessel small (menor) or large (mayor)?",
+          opciones: [
+              { valor: "menor", etiqueta: "Menor", etiquetaEn: "Small (menor)" },
+              { valor: "mayor", etiqueta: "Mayor", etiquetaEn: "Large (mayor)" }
+          ] },
+        { id: "tipoNavegacion", pregunta: "¿Navegas en altura o en cabotaje?", preguntaEn: "Do you navigate on high seas (altura) or coastal waters (cabotaje)?",
+          opciones: [
+              { valor: "altura", etiqueta: "Navegación de altura", etiquetaEn: "High seas (altura)" },
+              { valor: "cabotaje", etiqueta: "Cabotaje", etiquetaEn: "Coastal waters (cabotaje)" }
+          ] }
+    ],
+    destino: r => {
+        // Combina operación + tamaño + tipo de navegación
+        if (r.operacion === "despacho") {
+            return "despacho-" + r.tamano + "-" + r.tipoNavegacion;
+        }
+        // Arribo
+        return "arribo-" + r.tamano + "-" + r.tipoNavegacion;
+    }
+};
+
+// Aplicar enlaces y estatus en línea
 TRAMITES.forEach(tr => {
-    if (TRAMITES_EN_LINEA.has(tr.id)) {
+    if (PORTALES_EN_LINEA[tr.id]) {
         tr.enLinea = true;
-        if (!tr.portal) tr.portal = PORTAL_UNAMAN;
+        tr.portal = PORTALES_EN_LINEA[tr.id];
+    } else {
+        tr.enLinea = false;
+        delete tr.portal;
     }
 });
 
