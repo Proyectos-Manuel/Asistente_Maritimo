@@ -19,9 +19,7 @@ const CLAVE_SOLICITUDES = "unaman_solicitudes";
 const CLAVE_USUARIO = "unaman_usuario";
 
 // 💛 ENLACE DE APOYO VOLUNTARIO
-// Pega aquí tu link de Mercado Pago, Ko-fi o CoDi cuando lo tengas.
-// Mientras esté vacío, el botón "Apoyar al proyecto" no aparece.
-const ENLACE_APOYO = "";
+const ENLACE_APOYO = "http://link.mercadopago.com.mx/asistentetramites";
 
 // ---------- Usuario (preparado para el futuro "Premium") ----------
 // Hoy siempre es "anónimo". Se llenará cuando añadamos login más adelante.
@@ -913,16 +911,18 @@ function mostrarApoyo() {
     let texto = t(
         "🎉 Listo, tu solicitud está descargada.\n\n" +
         "💛 Este asistente es y seguirá siendo gratuito en su función principal.\n\n" +
-        "Si te sirvió, puedes apoyar el proyecto con una donación voluntaria. Es 100% opcional y me ayuda a mantenerlo en línea y a seguir agregando más trámites de otras dependencias.",
+        "Si te sirvió, puedes apoyar el proyecto con una donación voluntaria. Es 100% opcional — la app funciona completa sin necesidad de donar. Tu apoyo ayuda a mantenerla en línea y a seguir agregando más trámites de otras dependencias.\n\n" +
+        "🙏 Gracias por confiar en este proyecto.",
         "🎉 Done, your request has been downloaded.\n\n" +
         "💛 This assistant is and will remain free in its main function.\n\n" +
-        "If it helped you, you can support the project with a voluntary donation. It is 100% optional and helps me keep it online and add more procedures from other agencies."
+        "If it helped you, you can support the project with a voluntary donation. It is 100% optional — the app works fully without donating. Your support helps keep it online and add more procedures from other agencies.\n\n" +
+        "🙏 Thank you for trusting this project."
     );
     const botones = [];
     if (tieneEnlace) {
         botones.push({
             etiqueta: t("💛 Apoyar al proyecto", "💛 Support the project"),
-            accion: () => window.open(ENLACE_APOYO, "_blank", "noopener"),
+            accion: () => abrirEnlaceApoyo(),
             estilo: "primario"
         });
     }
@@ -931,10 +931,26 @@ function mostrarApoyo() {
         accion: () => { flujo = null; menuTramites(); }
     });
     botones.push({
-        etiqueta: t("🔎 Ver el estatus de mi solicitud", "🔎 Check my request status"),
-        accion: () => iniciarConsultaEstatus()
+        etiqueta: t("📋 Ver mis solicitudes guardadas", "📋 See my saved requests"),
+        accion: () => listarSolicitudesLocales()
     });
     decir(texto, botones);
+}
+
+function abrirEnlaceApoyo() {
+    // Intentar abrir en nueva pestaña
+    const ventana = window.open(ENLACE_APOYO, "_blank", "noopener");
+    if (!ventana || ventana.closed || typeof ventana.closed === "undefined") {
+        // Pop-up bloqueado: mostrar el enlace para copiar manualmente
+        decir(t(
+            "⚠️ Tu navegador bloqueó la ventana emergente.\n\n" +
+            "Copia y pega este enlace en tu navegador para hacer tu donación:\n\n" +
+            ENLACE_APOYO,
+            "⚠️ Your browser blocked the pop-up.\n\n" +
+            "Copy and paste this link into your browser to make your donation:\n\n" +
+            ENLACE_APOYO
+        ));
+    }
 }
 
 function decirCarpeta(tr, idioma) {
