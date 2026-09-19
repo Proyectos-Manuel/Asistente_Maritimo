@@ -16,10 +16,30 @@ let modoEnLinea = false;
 const CLAVE_PRIMER_USO = "unaman_privacidad_aceptada";
 const CLAVE_PERFIL = "unaman_perfil";
 const CLAVE_SOLICITUDES = "unaman_solicitudes";
-// ⚠️ MARCADOR DE PAGO: sustituye esta cadena vacía por tu enlace real de pago
-// (o tu CLABE) cuando lo tengas. Mientras esté vacía, el asistente muestra el
-// marcador "[ENLACE DE PAGO POR COLOCAR]" al concluir la solicitud.
-const ENLACE_PAGO = "";
+const CLAVE_USUARIO = "unaman_usuario";
+
+// 💛 ENLACE DE APOYO VOLUNTARIO
+// Pega aquí tu link de Mercado Pago, Ko-fi o CoDi cuando lo tengas.
+// Mientras esté vacío, el botón "Apoyar al proyecto" no aparece.
+const ENLACE_APOYO = "";
+
+// ---------- Usuario (preparado para el futuro "Premium") ----------
+// Hoy siempre es "anónimo". Se llenará cuando añadamos login más adelante.
+let usuario = leerLocal(CLAVE_USUARIO, { tipo: "anónimo", id: null, expira: null, primerUso: null });
+
+// Marca la fecha del primer uso (servirá para dar acceso fundador gratis)
+if (!usuario.primerUso) {
+    usuario.primerUso = new Date().toISOString().slice(0, 10);
+    guardarLocal(CLAVE_USUARIO, usuario);
+}
+
+// Devuelve true solo si el usuario es premium y no ha expirado.
+// Hoy siempre devuelve false; la lógica real se activará al añadir el premium.
+function esPremium() {
+    if (usuario.tipo !== "premium") return false;
+    if (usuario.expira && new Date(usuario.expira) < new Date()) return false;
+    return true;
+}
 
 const SECCIONES = {
     solicitante: { es: "DATOS DEL SOLICITANTE", en: "APPLICANT DETAILS" },
@@ -408,12 +428,39 @@ function agregarMensaje(texto, quien, botones, opcionesExtra) {
             div.querySelector(".texto-mensaje").appendChild(cont);
         }
     } else {
-        div.innerHTML = `<div class="texto-mensaje">${cuerpo}</div>`;
+        div.innerHTML = `
+            <div class="texto-mensaje">
+                <span class="texto-cuerpo">${cuerpo}</span>
+                <button class="boton-editar" title="${t('Corregir este mensaje', 'Edit this message')}" aria-label="${t('Corregir este mensaje', 'Edit this message')}">✏️</button>
+            </div>
+        `;
+        const btnEditar = div.querySelector(".boton-editar");
+        btnEditar.addEventListener("click", () => {
+            const campo = document.getElementById("texto-usuario");
+            campo.value = texto;
+            div.remove();
+            retrocederFlujo();
+            campo.focus();
+        });
     }
 
     caja.appendChild(div);
     caja.scrollTop = caja.scrollHeight;
     return div;
+}
+
+// Retrocede el flujo un paso cuando el usuario corrige un mensaje.
+// En pasos de ruta/perfil simplemente deja que reescriba y procesarMensaje lo trata como nuevo.
+function retrocederFlujo() {
+    if (!flujo) return;
+    if (flujo.paso === "llenado" && flujo.indice > 0) {
+        flujo.indice--;
+        const campo = flujo.tramite.campos[flujo.indice];
+        delete flujo.datos[campo.id];
+    } else if (flujo.paso === "dictado") {
+        // Reabrir el borrador de la sección actual
+        flujo.borradorDictado = "";
+    }
 }
 
 function pensarYResponder(fn, ms) {
@@ -554,10 +601,12 @@ function elegirTramite(tramite, respuestasRuta) {
         );
     }
     const botones = [];
+    // Opción primaria: llenar la solicitud para imprimir (flujo principal)
+    botones.push({ etiqueta: t("🖨️ Llenar la solicitud para imprimir", "🖨️ Fill out the request form to print"), accion: () => empezarLlenado(), estilo: "primario" });
+    // Opción secundaria: hacerlo en línea (solo si aplica)
     if (tramite.enLinea) {
-        botones.push({ etiqueta: t("🌐 Hacerlo en línea", "🌐 Do it online"), accion: () => empezarEnLinea(), estilo: "primario" });
+        botones.push({ etiqueta: t("🌐 Hacerlo en línea", "🌐 Do it online"), accion: () => empezarEnLinea() });
     }
-    botones.push({ etiqueta: t("🖨️ Llenar la solicitud para imprimir", "🖨️ Fill out the request form to print"), accion: () => empezarLlenado(), estilo: tramite.enLinea ? "" : "primario" });
     decir(texto, botones);
 }
 
@@ -580,14 +629,30 @@ function empezarEnLinea() {
 
 function abrirPortal() {
     const idioma = idiomaFlujo();
-    window.open(tr.portal || "https://www.gob.mx/semar/unaman", "_blank", "noopener");
-    decir(
-        t(
-            "Abrí el sitio oficial.\n\nRecuerda: soy solo tu guía de apoyo; el trámite se concluye en el sitio oficial correspondiente. Si tienes dudas en el camino, escríbeme y te explico. Al terminar puedes consultar el estatus con tu folio en \"Mi solicitud\".",
-            "I opened the official site.\n\nRemember: I am only your support guide; the procedure is completed on the corresponding official site. If you have questions along the way, write to me and I will explain. When you finish, you can check the status with your reference number under \"My request\"."
-        ),
-        [{ etiqueta: t("✅ Ya terminé mi trámite en línea", "✅ I finished my online procedure"), accion: () => terminarEnLinea() }]
-    );
+    const url = (flujo && flujo.tramite && flujo.tramite.portal) || "https://www.gob.mx/semar/unaman";
+    // Intentar abrir en nueva pestaña
+    const ventana = window.open(url, "_blank", "noopener");
+    if (!ventana || ventana.closed || typeof ventana.closed === "undefined") {
+        // Pop-up bloqueado: mostrar el enlace para que lo abra manualmente
+        decir(t(
+            "⚠️ Tu navegador bloqueó la ventana emergente.\n\n" +
+            "Copia y pega este enlace en tu navegador para abrir el sitio oficial:\n\n" +
+            url,
+            "⚠️ Your browser blocked the pop-up.\n\n" +
+            "Copy and paste this link into your browser to open the official site:\n\n" +
+            url
+        ), [
+            { etiqueta: t("✅ Ya lo abrí", "✅ I opened it"), accion: () => terminarEnLinea() }
+        ]);
+    } else {
+        decir(
+            t(
+                "Abrí el sitio oficial.\n\nRecuerda: soy solo tu guía de apoyo; el trámite se concluye en el sitio oficial correspondiente. Si tienes dudas en el camino, escríbeme y te explico.",
+                "I opened the official site.\n\nRemember: I am only your support guide; the procedure is completed on the corresponding official site. If you have questions along the way, write to me and I will explain."
+            ),
+            [{ etiqueta: t("✅ Ya terminé mi trámite en línea", "✅ I finished my online procedure"), accion: () => terminarEnLinea() }]
+        );
+    }
 }
 
 function terminarEnLinea() {
@@ -776,26 +841,7 @@ function validarCampo(campo, valor, idioma, solicitante) {
     return null;
 }
 
-// ---------- Pago: paso entre la hoja completa y el PDF ----------
-function mensajePago(solicitud, continuar) {
-    const tieneEnlace = ENLACE_PAGO && ENLACE_PAGO.length > 0;
-    const enlace = tieneEnlace
-        ? '<a href="' + escapar(ENLACE_PAGO) + '" target="_blank" rel="noopener" style="color:var(--mar-claro); font-weight:700;">' + t("Realizar el depósito de 10 pesos mexicanos", "Make the 10 Mexican pesos payment") + '</a>'
-        : '<strong style="color:#b45309;">' + t("[ENLACE DE PAGO POR COLOCAR — 10 PESOS MEXICANOS]", "[PAYMENT LINK TO BE ADDED — 10 MEXICAN PESOS]") + '</strong>';
-    const texto = t(
-        "Tu contribución de apoyo es de 10 pesos mexicanos por esta interacción, con mi acompañamiento durante 24 horas.\n\nSi estás de acuerdo, realiza el depósito aquí:\n\n",
-        "Your support contribution is 10 Mexican pesos for this interaction, with my support for 24 hours.\n\nIf you agree, make the payment here:\n\n"
-    ) + enlace + "\n\n" + t("Cuando termines, toca el botón de abajo para descargar tu solicitud.", "When you are done, tap the button below to download your request.");
-    agregarMensaje(texto, "asistente", [
-        { etiqueta: t("🖨️ Continuar: descargar solicitud en formato oficial (PDF)", "🖨️ Continue: download official request form (PDF)"), accion: continuar, estilo: "primario" },
-        { etiqueta: t("📄 Ver qué más llevar en mi carpeta", "📄 See what else to bring"), accion: () => decirCarpeta(flujoTramiteDe(solicitud), solicitud.idiomaAuxiliar || "es") }
-    ]);
-    if (vozAutomatica) leerEnVoz(texto.replace(/<[^>]+>/g, ""), null);
-}
 
-function flujoTramiteDe(solicitud) {
-    return TRAMITES.find(x => x.id === solicitud.tramiteId) || null;
-}
 
 function concluirSolicitud() {
     const idioma = idiomaFlujo();
@@ -831,9 +877,44 @@ function concluirSolicitud() {
 
     flujo = null;
     decir(resumen, [
-        { etiqueta: t("💳 Continuar", "💳 Continue"), accion: () => mensajePago(solicitud, () => generarPDF(solicitud)), estilo: "primario" },
+        { etiqueta: t("📄 Descargar mi solicitud (PDF)", "📄 Download my request (PDF)"), accion: () => descargarYApoyar(solicitud), estilo: "primario" },
+        { etiqueta: t("📁 Ver qué más llevar", "📁 See what else to bring"), accion: () => decirCarpeta(tr, idioma) },
         { etiqueta: t("🔎 Ver el estatus de mi solicitud", "🔎 Check my request status"), accion: () => iniciarConsultaEstatus() }
     ]);
+}
+
+function descargarYApoyar(solicitud) {
+    generarPDF(solicitud);
+    setTimeout(() => mostrarApoyo(), 900);
+}
+
+function mostrarApoyo() {
+    const tieneEnlace = ENLACE_APOYO && ENLACE_APOYO.length > 0;
+    let texto = t(
+        "🎉 Listo, tu solicitud está descargada.\n\n" +
+        "💛 Este asistente es y seguirá siendo gratuito en su función principal.\n\n" +
+        "Si te sirvió, puedes apoyar el proyecto con una donación voluntaria. Es 100% opcional y me ayuda a mantenerlo en línea y a seguir agregando más trámites de otras dependencias.",
+        "🎉 Done, your request has been downloaded.\n\n" +
+        "💛 This assistant is and will remain free in its main function.\n\n" +
+        "If it helped you, you can support the project with a voluntary donation. It is 100% optional and helps me keep it online and add more procedures from other agencies."
+    );
+    const botones = [];
+    if (tieneEnlace) {
+        botones.push({
+            etiqueta: t("💛 Apoyar al proyecto", "💛 Support the project"),
+            accion: () => window.open(ENLACE_APOYO, "_blank", "noopener"),
+            estilo: "primario"
+        });
+    }
+    botones.push({
+        etiqueta: t("📋 Hacer otro trámite", "📋 Start another procedure"),
+        accion: () => { flujo = null; menuTramites(); }
+    });
+    botones.push({
+        etiqueta: t("🔎 Ver el estatus de mi solicitud", "🔎 Check my request status"),
+        accion: () => iniciarConsultaEstatus()
+    });
+    decir(texto, botones);
 }
 
 function decirCarpeta(tr, idioma) {
@@ -1179,6 +1260,8 @@ function enviarMensaje() {
     if (!texto) return;
     agregarMensaje(texto, "usuario");
     campo.value = "";
+    const aviso = document.getElementById("aviso-confianza");
+    if (aviso) aviso.classList.remove("visible");
     pensarYResponder(() => procesarMensaje(texto), 400);
 }
 
@@ -1192,8 +1275,17 @@ function configurarMicrofono() {
     reconocimiento = new ReconocimientoVoz();
     reconocimiento.continuous = false;
     reconocimiento.onresult = e => {
-        document.getElementById("texto-usuario").value = e.results[0][0].transcript;
-        enviarMensaje();
+        const resultado = e.results[0][0];
+        const texto = resultado.transcript;
+        const confianza = resultado.confidence;
+        const campo = document.getElementById("texto-usuario");
+        campo.value = texto;
+        campo.focus();
+        // No enviamos automáticamente: el usuario revisa y confirma.
+        // Si la confianza es baja, avisamos con un mensaje amarillo.
+        if (confianza > 0 && confianza < 0.7 && texto.length > 6) {
+            mostrarAvisoConfianza();
+        }
     };
     reconocimiento.onend = () => {
         reconociendo = false;
@@ -1207,6 +1299,17 @@ function configurarMicrofono() {
 
 function actualizarIdiomaMicrofono() {
     if (reconocimiento) reconocimiento.lang = perfil.idioma === "en" ? "en-US" : "es-MX";
+}
+
+function mostrarAvisoConfianza() {
+    const aviso = document.getElementById("aviso-confianza");
+    if (!aviso) return;
+    aviso.textContent = perfil.idioma === "en"
+        ? "⚠️ I'm not sure I heard you right. Check the text below, correct it if needed, then tap ➤ to send."
+        : "⚠️ No estoy seguro de haber escuchado bien. Revisa el texto, corrígelo si es necesario y toca ➤ para enviar.";
+    aviso.classList.add("visible");
+    clearTimeout(aviso._timer);
+    aviso._timer = setTimeout(() => aviso.classList.remove("visible"), 8000);
 }
 
 // ---------- Perfil y modales ----------

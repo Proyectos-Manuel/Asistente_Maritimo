@@ -35,7 +35,7 @@
         header::after {
             content: "";
             position: absolute; inset: 0;
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60' viewBox='0 0 120 60'%3E%3Cpath d='M0 30 Q 30 10 60 30 T 120 30' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='2'/%3E%3Cpath d='M0 45 Q 30 25 60 45 T 120 45' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='2'/%3E%3C/svg%3E");
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60' viewBox='0 0 120 60'%3E%3Cpath d='M0 30 Q 30 10 60 30 T 120 30' fill='none' stroke='rgba(255,255,255,0.12)' stroke-width='2'/%3E%3Cpath d='M0 45 Q 30 25 60 45 T 120 45' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='2'/%3E%3C/svg%3E");
             pointer-events: none;
         }
         header h1 { font-size: 1.3rem; font-weight: 700; line-height: 1.25; position: relative; }
@@ -55,7 +55,6 @@
             font-size: 1.25rem; box-shadow: 0 2px 8px rgba(0, 20, 35, 0.3);
             animation: latido 2.4s infinite;
         }
-        /* Tutorial de bienvenida */
         .tutorial-paso { border-left: 4px solid var(--acento); }
         .opciones-tutorial { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
         .opciones-tutorial .opcion-voz, .opciones-tutorial .opcion-idioma { padding: 0.6rem 0.4rem; }
@@ -80,13 +79,34 @@
             border-radius: 18px;
             box-shadow: 0 3px 14px rgba(0, 58, 93, 0.08);
         }
-        .mensaje { margin-bottom: 0.9rem; padding: 0.85rem 1.05rem; border-radius: 18px; line-height: 1.55; max-width: 92%; font-size: 0.95rem; }
+        .mensaje { margin-bottom: 0.9rem; padding: 0.85rem 1.05rem; border-radius: 18px; line-height: 1.55; max-width: 92%; font-size: 0.98rem; }
         .mensaje.asistente { background: var(--asistente); border: 1px solid var(--asistente-borde); border-bottom-left-radius: 5px; margin-right: auto; animation: aparece 0.25s ease-out; }
         .mensaje.usuario { background: var(--usuario); color: var(--blanco); border-bottom-right-radius: 5px; margin-left: auto; animation: aparece 0.25s ease-out; }
         @keyframes aparece { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .contenido-mensaje { display: flex; align-items: flex-start; gap: 0.5rem; }
         .texto-mensaje { flex: 1; min-width: 0; }
         .texto-mensaje strong { color: var(--mar); }
+
+        /* Mensajes del usuario: texto + botón de corregir */
+        .mensaje.usuario .texto-mensaje { display: flex; align-items: flex-start; gap: 0.45rem; }
+        .mensaje.usuario .texto-cuerpo { flex: 1; min-width: 0; word-wrap: break-word; }
+        .boton-editar {
+            background: rgba(255,255,255,0.18);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px; height: 28px;
+            min-width: 28px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .boton-editar:hover { background: rgba(255,255,255,0.4); }
+        .boton-editar:active { transform: scale(0.9); }
 
         .botones-mensaje { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
         .boton-accion {
@@ -176,8 +196,24 @@
         }
         .interruptor[aria-checked="true"]::after { left: 23px; }
         .etiqueta-voz { font-size: 0.85rem; color: var(--texto-suave); }
+
         #aviso-micro { display: none; font-size: 0.85rem; color: #b45309; font-weight: 600; margin-top: 0.5rem; }
         #aviso-micro.visible { display: block; }
+
+        /* Aviso de baja confianza al dictar */
+        #aviso-confianza {
+            display: none;
+            font-size: 0.88rem;
+            color: #92400e;
+            background: #fef3c7;
+            border: 1.5px solid #fcd34d;
+            border-radius: 12px;
+            padding: 0.65rem 0.85rem;
+            margin-top: 0.55rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        #aviso-confianza.visible { display: block; animation: aparece 0.25s ease-out; }
 
         /* ---- Modales ---- */
         .modal-fondo {
@@ -230,38 +266,39 @@
 <body>
 
 <header>
-    <div id="avatar-asistente" title="Tu asistente">🧑</div>
-    <button id="boton-config" title="Configurar voz e idioma">⚙️</button>
+    <div id="avatar-asistente" role="img" aria-label="Tu asistente">🧑</div>
+    <button id="boton-config" title="Configurar voz e idioma" aria-label="Configurar voz e idioma">⚙️</button>
     <h1>Asistente para Trámites</h1>
     <p>Tu amigo que te apoyará en todo el proceso</p>
 </header>
 
 <main>
-    <div id="cuadro-conversacion"></div>
+    <div id="cuadro-conversacion" role="log" aria-live="polite" aria-relevant="additions"></div>
 
     <div id="indicador" aria-hidden="true"><span class="punto"></span><span class="punto"></span><span class="punto"></span></div>
 
     <div id="zona-entrada">
-        <input type="text" id="texto-usuario" placeholder="Escribe tu pregunta..." autocomplete="off">
-        <button id="boton-micro" class="micro" title="Hablar con el asistente">🎤</button>
-        <button id="boton-enviar" class="enviar" title="Enviar">➤</button>
-        <button id="boton-limpiar" class="limpiar" title="Empezar de nuevo">🧹</button>
+        <input type="text" id="texto-usuario" placeholder="Escribe tu pregunta..." autocomplete="off" aria-label="Escribe tu pregunta">
+        <button id="boton-micro" class="micro" title="Hablar con el asistente" aria-label="Hablar con el asistente">🎤</button>
+        <button id="boton-enviar" class="enviar" title="Enviar" aria-label="Enviar mensaje">➤</button>
+        <button id="boton-limpiar" class="limpiar" title="Empezar de nuevo" aria-label="Empezar de nuevo">🧹</button>
     </div>
 
     <div id="acciones"></div>
 
     <div class="fila-voz">
-        <button class="interruptor" id="interruptor-voz" role="switch" aria-checked="false" title="Voz automática"></button>
+        <button class="interruptor" id="interruptor-voz" role="switch" aria-checked="false" title="Voz automática" aria-label="Voz automática"></button>
         <span class="etiqueta-voz" id="etiqueta-voz">Voz automática: el asistente lee sus respuestas en voz alta</span>
     </div>
     <div id="aviso-micro">Tu navegador no soporta el micrófono — usa Chrome o Edge para hablar.</div>
+    <div id="aviso-confianza" role="alert"></div>
 </main>
 
 <footer>
     <p><a id="enlace-privacidad">Aviso de privacidad</a> · Este sitio es una herramienta independiente de apoyo; los trámites se concluyen en los canales oficiales correspondientes.</p>
 </footer>
 
-<!-- Modal: Aviso de privacidad (contenido bilingüe lo llena app.js) -->
+<!-- Modal: Aviso de privacidad -->
 <div class="modal-fondo" id="modal-privacidad">
     <div class="modal">
         <h2 id="titulo-privacidad">🔒 Aviso de Privacidad</h2>
@@ -272,7 +309,7 @@
     </div>
 </div>
 
-<!-- Modal: Configuración (voz e idioma) -->
+<!-- Modal: Configuración -->
 <div class="modal-fondo" id="modal-config">
     <div class="modal">
         <h2>⚓ Configura tu asistente</h2>
