@@ -14,7 +14,7 @@
             --arena-oscura: #e9e0cc;
             --asistente: #eaf3fa;
             --asistente-borde: #c5ddf0;
-            --usuario: #0069a7;
+            --usuario: #4a9d6e;
             --acento: #d97706;
             --exito: #2e7d32;
             --texto: #1c2b36;
@@ -79,7 +79,7 @@
             border-radius: 18px;
             box-shadow: 0 3px 14px rgba(0, 58, 93, 0.08);
         }
-        .mensaje { margin-bottom: 0.9rem; padding: 0.85rem 1.05rem; border-radius: 18px; line-height: 1.55; max-width: 92%; font-size: 0.98rem; }
+        .mensaje { margin-bottom: 0.9rem; padding: 0.9rem 1.1rem; border-radius: 18px; line-height: 1.6; max-width: 92%; font-size: 1.05rem; }
         .mensaje.asistente { background: var(--asistente); border: 1px solid var(--asistente-borde); border-bottom-left-radius: 5px; margin-right: auto; animation: aparece 0.25s ease-out; }
         .mensaje.usuario { background: var(--usuario); color: var(--blanco); border-bottom-right-radius: 5px; margin-left: auto; animation: aparece 0.25s ease-out; }
         @keyframes aparece { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -160,8 +160,8 @@
 
         #zona-entrada { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.8rem; }
         #texto-usuario {
-            flex: 1 1 150px; min-width: 0; padding: 0.85rem 1.1rem; border: 1.5px solid var(--arena-oscura);
-            border-radius: 25px; font-size: 1rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+            flex: 1 1 150px; min-width: 0; padding: 0.9rem 1.15rem; border: 1.5px solid var(--arena-oscura);
+            border-radius: 25px; font-size: 1.05rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
             background: var(--blanco); color: var(--texto); font-family: inherit;
         }
         #texto-usuario:focus { border-color: var(--mar-claro); box-shadow: 0 0 0 3px rgba(0, 91, 150, 0.15); }
